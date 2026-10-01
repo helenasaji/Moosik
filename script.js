@@ -1,3 +1,11 @@
+// Initialize Supabase client
+const SUPABASE_URL = "https://pijczsbebhvdvqrmfcmu.supabase.co";
+const SUPABASE_KEY = "sb_publishable_CPJDJ_Mc6Rnu83kEQ41RFw_Tl5jxTjD";
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// Jamendo Client ID
+const JAMENDO_CLIENT_ID = "3a261f5d"; 
+
 const welcomeScreen = document.getElementById('welcomeScreen');
 const mainApp = document.getElementById('mainApp');
 const userNameInput = document.getElementById('userNameInput');
@@ -11,9 +19,9 @@ const favoritesList = document.getElementById('favoritesList');
 const audioPlayer = document.getElementById('audioPlayer');
 
 let currentUser = "";
-let cachedHost = "";
+let cloudFavorites = [];
 
-// Check for active session
+// Check local session state
 const savedUser = localStorage.getItem('moosik_active_user');
 if (savedUser) loginUser(savedUser);
 
@@ -31,6 +39,7 @@ function handleLogin() {
 switchUserBtn.addEventListener('click', () => {
     localStorage.removeItem('moosik_active_user');
     currentUser = "";
+    cloudFavorites = [];
     audioPlayer.pause();
     audioPlayer.src = "";
     mainApp.style.display = "none";
@@ -38,33 +47,37 @@ switchUserBtn.addEventListener('click', () => {
     userNameInput.value = "";
 });
 
-async function getAudiusHost() {
-    if (cachedHost) return cachedHost;
-    const hostRes = await fetch('https://api.audius.co');
-    const hosts = await hostRes.json();
-    cachedHost = hosts.data[0];
-    return cachedHost;
-}
-
 async function loginUser(name) {
     currentUser = name;
     welcomeScreen.style.display = "none";
     mainApp.style.display = "block";
     greetingText.textContent = `${name}'s Moosik`;
-    renderFavorites();
-    loadDefaultTrendingMusic(); // Automatically show a song list on open!
+    await fetchCloudFavorites();
+    loadJamendoTrending();
 }
 
-// Load default trending tracks on startup so the screen isn't empty
-async function loadDefaultTrendingMusic() {
-    resultsList.innerHTML = `<div class="status-msg">Loading trending music...</div>`;
+// Fetch user favorites from Supabase SQL Database
+async function fetchCloudFavorites() {
+    const { data, error } = await supabaseClient
+        .from('user_favorites')
+        .select('*')
+        .eq('username', currentUser);
+
+    if (!error && data) {
+        cloudFavorites = data;
+        renderFavorites();
+    }
+}
+
+// Load Jamendo Trending Music on start
+async function loadJamendoTrending() {
+    resultsList.innerHTML = `<div class="status-msg">Loading Jamendo music...</div>`;
     try {
-        const host = await getAudiusHost();
-        const res = await fetch(`${host}/v1/tracks/trending?app_name=Moosik`);
+        const res = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=${JAMENDO_CLIENT_ID}&format=json&limit=6&include=musicinfo`);
         const data = await res.json();
-        displayTracks(data.data.slice(0, 6), host);
+        displayTracks(data.results);
     } catch (err) {
-        resultsList.innerHTML = `<div class="status-msg">Use the search bar above to find music.</div>`;
+        resultsList.innerHTML = `<div class="status-msg">Use search above to find tracks.</div>`;
     }
 }
 
@@ -74,41 +87,35 @@ searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') executeS
 async function executeSearch() {
     const query = searchInput.value.trim();
     if (!query) return;
-    resultsList.innerHTML = `<div class="status-msg">Searching Audius...</div>`;
+    resultsList.innerHTML = `<div class="status-msg">Searching Jamendo...</div>`;
     try {
-        const host = await getAudiusHost();
-        const res = await fetch(`${host}/v1/tracks/search?query=${encodeURIComponent(query)}&app_name=Moosik`);
+        const res = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=${JAMENDO_CLIENT_ID}&format=json&limit=6&search=${encodeURIComponent(query)}`);
         const data = await res.json();
-        displayTracks(data.data ? data.data.slice(0, 6) : [], host);
+        displayTracks(data.results);
     } catch (err) {
-        resultsList.innerHTML = `<div class="status-msg">Error connecting to network. Try again.</div>`;
+        resultsList.innerHTML = `<div class="status-msg">Network error. Try again.</div>`;
     }
 }
 
-// Reusable function to render tracks and check if they are already saved (Green button state)
-function displayTracks(tracks, host) {
+function displayTracks(tracks) {
     resultsList.innerHTML = "";
-    const userFavorites = getUserFavorites();
-
     if (!tracks || tracks.length === 0) {
         resultsList.innerHTML = `<div class="status-msg">No tracks found.</div>`;
         return;
     }
 
     tracks.forEach(track => {
-        const artwork = track.artwork && track.artwork['150x150'] ? track.artwork['150x150'] : 'https://via.placeholder.com/150/1a1a24/ffffff?text=Moosik';
-        const streamUrl = `${host}/v1/tracks/${track.id}/stream?app_name=Moosik`;
-        
-        // Check if this song is already in user favorites
-        const isSaved = userFavorites.some(fav => fav.id === track.id);
+        const artwork = track.image || 'https://via.placeholder.com/150/1a1a24/ffffff?text=Moosik';
+        const streamUrl = track.audio;
+        const isSaved = cloudFavorites.some(fav => fav.track_id === String(track.id));
 
         const trackDiv = document.createElement('div');
         trackDiv.className = 'track-item';
         trackDiv.innerHTML = `
             <img src="${artwork}" alt="Cover" class="list-art">
             <div class="track-info" style="flex: 1;">
-                <strong>${escapeHtml(track.title)}</strong>
-                <span>${escapeHtml(track.user.name)}</span>
+                <strong>${escapeHtml(track.name)}</strong>
+                <span>${escapeHtml(track.artist_name)}</span>
             </div>
             <button type="button" class="save-btn" style="${isSaved ? 'background: rgba(46, 204, 113, 0.4); border-color: rgba(46, 204, 113, 0.6);' : ''}">
                 ${isSaved ? 'Saved ✓' : 'Save'}
@@ -121,7 +128,14 @@ function displayTracks(tracks, host) {
         const saveBtn = trackDiv.querySelector('.save-btn');
         saveBtn.addEventListener('click', (e) => {
             e.stopPropagation();
-            saveFavorite({ id: track.id, title: track.title, artist: track.user.name, artwork, streamUrl }, saveBtn);
+            toggleFavorite({
+                username: currentUser,
+                track_id: String(track.id),
+                title: track.name,
+                artist: track.artist_name,
+                artwork,
+                stream_url: streamUrl
+            }, saveBtn);
         });
 
         resultsList.appendChild(trackDiv);
@@ -133,37 +147,29 @@ function playSong(url) {
     audioPlayer.play().catch(() => {});
 }
 
-function getUserFavorites() {
-    const masterDB = JSON.parse(localStorage.getItem('moosik_master_db')) || {};
-    return masterDB[currentUser] || [];
-}
+async function toggleFavorite(songData, buttonElement) {
+    const isAlreadySaved = cloudFavorites.some(fav => fav.track_id === songData.track_id);
 
-function saveFavorite(songData, buttonElement) {
-    const masterDB = JSON.parse(localStorage.getItem('moosik_master_db')) || {};
-    if (!masterDB[currentUser]) masterDB[currentUser] = [];
-    
-    const exists = masterDB[currentUser].some(fav => fav.id === songData.id);
-    if (!exists) {
-        masterDB[currentUser].push(songData);
-        localStorage.setItem('moosik_master_db', JSON.stringify(masterDB));
-        
-        // Turn button green and change text instantly
-        buttonElement.textContent = "Saved ✓";
-        buttonElement.style.background = "rgba(46, 204, 113, 0.4)";
-        buttonElement.style.borderColor = "rgba(46, 204, 113, 0.6)";
-        
-        renderFavorites();
+    if (!isAlreadySaved) {
+        // Insert into Supabase SQL Database
+        const { error } = await supabaseClient.from('user_favorites').insert([songData]);
+        if (!error) {
+            buttonElement.textContent = "Saved ✓";
+            buttonElement.style.background = "rgba(46, 204, 113, 0.4)";
+            buttonElement.style.borderColor = "rgba(46, 204, 113, 0.6)";
+            await fetchCloudFavorites();
+        }
     }
 }
 
 function renderFavorites() {
     favoritesList.innerHTML = "";
-    const userFavorites = getUserFavorites();
-    if (userFavorites.length === 0) {
-        favoritesList.innerHTML = `<div class="status-msg">No favorites yet.</div>`;
+    if (cloudFavorites.length === 0) {
+        favoritesList.innerHTML = `<div class="status-msg">No cloud favorites yet.</div>`;
         return;
     }
-    userFavorites.forEach((fav, index) => {
+
+    cloudFavorites.forEach((fav) => {
         const favDiv = document.createElement('div');
         favDiv.className = 'track-item';
         favDiv.innerHTML = `
@@ -174,25 +180,29 @@ function renderFavorites() {
             </div>
             <button type="button" class="remove-btn">✕</button>
         `;
-        favDiv.querySelector('.list-art').addEventListener('click', () => playSong(fav.streamUrl));
-        favDiv.querySelector('.track-info').addEventListener('click', () => playSong(fav.streamUrl));
-        
-        favDiv.querySelector('.remove-btn').addEventListener('click', (e) => {
+
+        favDiv.querySelector('.list-art').addEventListener('click', () => playSong(fav.stream_url));
+        favDiv.querySelector('.track-info').addEventListener('click', () => playSong(fav.stream_url));
+
+        favDiv.querySelector('.remove-btn').addEventListener('click', async (e) => {
             e.stopPropagation();
-            const masterDB = JSON.parse(localStorage.getItem('moosik_master_db')) || {};
-            if (masterDB[currentUser]) {
-                masterDB[currentUser].splice(index, 1);
-                localStorage.setItem('moosik_master_db', JSON.stringify(masterDB));
-                renderFavorites();
-                // Refresh current search/trending results so the button turns back to blue if visible
+            // Delete row from Supabase SQL Database
+            const { error } = await supabaseClient
+                .from('user_favorites')
+                .delete()
+                .eq('username', currentUser)
+                .eq('track_id', fav.track_id);
+
+            if (!error) {
+                await fetchCloudFavorites();
                 if (searchInput.value.trim()) {
                     executeSearch();
                 } else {
-                    loadDefaultTrendingMusic();
+                    loadJamendoTrending();
                 }
             }
         });
-        favoritesList.appendChild(favoritesList.appendChild ? favoritesList : null); // safety
+
         favoritesList.appendChild(favDiv);
     });
 }

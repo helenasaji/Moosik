@@ -1,10 +1,9 @@
-// Initialize Supabase client
+// Initialize Supabase client safely in browser
 const SUPABASE_URL = "https://pijczsbebhvdvqrmfcmu.supabase.co";
 const SUPABASE_KEY = "sb_publishable_CPJDJ_Mc6Rnu83kEQ41RFw_Tl5jxTjD";
-const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Jamendo Client ID
-const JAMENDO_CLIENT_ID = "3a261f5d"; 
+const JAMENDO_CLIENT_ID = "3a261f5d";
 
 const welcomeScreen = document.getElementById('welcomeScreen');
 const mainApp = document.getElementById('mainApp');

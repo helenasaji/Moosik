@@ -1,34 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Moosik | Discover Tunes</title>
-    <!-- Connects the CSS file -->
-    <link rel="stylesheet" href="style.css">
-</head>
-<body>
-
-    <div class="glass-panel">
-        <h1>Moosik</h1>
-        
-        <div class="search-container">
-            <input type="text" id="searchInput" placeholder="Search genre (e.g. jazz, rock)...">
-            <button id="searchBtn">Find</button>
-        </div>
-
-        <div class="track-info">
-            <img id="coverImage" class="cover-art" src="https://via.placeholder.com/180/222222/FFFFFF?text=Moosik" alt="Album Art">
-            <h2 id="titleText" class="track-title">Ready to play</h2>
-            <p id="artistText" class="track-artist">Search for a vibe</p>
-        </div>
-
-        <audio id="audioPlayer" controls>
-            Your browser does not support the audio element.
-        </audio>
-    </div>
-
-    <!-- Connects the JavaScript file at the bottom so the HTML loads first -->
-    <script src="script.js"></script>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Moosik Pro</title>
+  </head>
+  <body>
+    <div id="app"></div>
+    <!-- Vite automatically bundles this script -->
+    <script type="module" src="/main.js"></script>
+  </body>
 </html>

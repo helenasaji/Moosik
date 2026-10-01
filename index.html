@@ -4,9 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Moosik Pro</title>
-    <!-- Cache buster to force phone refresh -->
-    <link rel="stylesheet" href="style.css?v=4">
+    <!-- Use esm.sh for robust browser module loading -->
+    <script type="module">
+        import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+        window.supabase = { createClient };
+    </script>
+    <link rel="stylesheet" href="style.css?v=6">
 </head>
+
 <body>
     <!-- SCREEN 1: Name Gate -->
     <div id="welcomeScreen" class="glass-panel">

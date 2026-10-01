@@ -3,8 +3,8 @@ const SUPABASE_URL = "https://pijczsbebhvdvqrmfcmu.supabase.co";
 const SUPABASE_KEY = "sb_publishable_CPJDJ_Mc6Rnu83kEQ41RFw_Tl5jxTjD";
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Replace with your YouTube API Key (secured by your Vercel domain restriction in Google Cloud)
-const YOUTUBE_API_KEY = "AIzaSyAQoC-rTdxBeRzW7_ic0JMZocXSI_-T0cY"; 
+// Your API key is safely protected by your Google Cloud website domain restriction
+const YOUTUBE_API_KEY = "AIzaSyAQoC-rTdxBeRzW7_ic0JMZocXSI_-T0cY";
 
 const welcomeScreen = document.getElementById('welcomeScreen');
 const mainApp = document.getElementById('mainApp');
@@ -64,7 +64,6 @@ async function loginUser(name) {
     mainApp.style.display = "block";
     greetingText.textContent = `${name}'s Moosik`;
     await fetchCloudFavorites();
-    // Load default trending tracks on start
     searchDefaultMusic("Malayalam hits");
 }
 
@@ -113,22 +112,27 @@ async function fetchYouTubeTracks(query) {
             videoId: item.id.videoId
         }));
         
-        displayTracks(tracks);
+        displayTracks(tracks, resultsList);
     } catch (err) {
-        resultsList.innerHTML = `<div class="status-msg">Search error. Please verify API key.</div>`;
+        resultsList.innerHTML = `<div class="status-msg">Search error. Check API key.</div>`;
     }
 }
 
-function displayTracks(tracks) {
-    resultsList.innerHTML = "";
+function displayTracks(tracks, container) {
+    container.innerHTML = "";
+    if (!tracks || tracks.length === 0) {
+        container.innerHTML = `<div class="status-msg">No tracks found.</div>`;
+        return;
+    }
+
     tracks.forEach(track => {
-        const isSaved = cloudFavorites.some(fav => fav.track_id === String(track.id));
+        const isSaved = cloudFavorites.some(fav => fav.track_id === String(track.videoId));
 
         const trackDiv = document.createElement('div');
         trackDiv.className = 'track-item';
         trackDiv.innerHTML = `
             <img src="${track.image}" alt="Cover" class="list-art">
-            <div class="track-info" style="flex: 1;">
+            <div class="track-info" style="flex: 1; cursor: pointer;">
                 <strong>${escapeHtml(track.name)}</strong>
                 <span>${escapeHtml(track.artist_name)}</span>
             </div>
@@ -137,15 +141,17 @@ function displayTracks(tracks) {
             </button>
         `;
 
+        // Click to play handling
         trackDiv.querySelector('.list-art').addEventListener('click', () => playYouTubeVideo(track.videoId));
         trackDiv.querySelector('.track-info').addEventListener('click', () => playYouTubeVideo(track.videoId));
 
+        // Save to Supabase handling
         const saveBtn = trackDiv.querySelector('.save-btn');
         saveBtn.addEventListener('click', (e) => {
             e.stopPropagation();
             toggleFavorite({
                 username: currentUser,
-                track_id: String(track.id),
+                track_id: String(track.videoId),
                 title: track.name,
                 artist: track.artist_name,
                 artwork: track.image,
@@ -153,7 +159,7 @@ function displayTracks(tracks) {
             }, saveBtn);
         });
 
-        resultsList.appendChild(trackDiv);
+        container.appendChild(trackDiv);
     });
 }
 
@@ -174,6 +180,8 @@ async function toggleFavorite(songData, buttonElement) {
             buttonElement.style.background = "rgba(46, 204, 113, 0.4)";
             buttonElement.style.borderColor = "rgba(46, 204, 113, 0.6)";
             await fetchCloudFavorites();
+        } else {
+            console.error("Supabase insert error:", error);
         }
     }
 }
@@ -190,7 +198,7 @@ function renderFavorites() {
         favDiv.className = 'track-item';
         favDiv.innerHTML = `
             <img src="${fav.artwork}" alt="Cover" class="list-art">
-            <div class="track-info" style="flex: 1;">
+            <div class="track-info" style="flex: 1; cursor: pointer;">
                 <strong>${escapeHtml(fav.title)}</strong>
                 <span>${escapeHtml(fav.artist)}</span>
             </div>

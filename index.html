@@ -1,13 +1,12 @@
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Moosik Pro</title>
-  </head>
-  <body>
-    <div id="app"></div>
-    <!-- Vite automatically bundles this script -->
-    <script type="module" src="/main.js"></script>
-  </body>
-</html>
+<!-- SCREEN 1: The Name Gate -->
+<div id="welcomeScreen" class="glass-panel">
+    <h1>Welcome to Moosik</h1>
+    <input type="text" id="userNameInput" placeholder="Enter your full name">
+    <button id="enterAppBtn">Enter</button>
+</div>
+
+<!-- SCREEN 2: The Main App (Hidden by default) -->
+<div id="mainApp" class="glass-panel" style="display: none;">
+    <h1 id="greetingText">Moosik</h1>
+    <!-- Search Bar, Audio Player, and Favorites List go here -->
+</div>

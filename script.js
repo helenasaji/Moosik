@@ -3,6 +3,9 @@ const SUPABASE_URL = "https://pijczsbebhvdvqrmfcmu.supabase.co";
 const SUPABASE_KEY = "sb_publishable_CPJDJ_Mc6Rnu83kEQ41RFw_Tl5jxTjD";
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+// Replace with your YouTube API Key (secured by your Vercel domain restriction in Google Cloud)
+const YOUTUBE_API_KEY = "AIzaSyAQoC-rTdxBeRzW7_ic0JMZocXSI_-T0cY"; 
+
 const welcomeScreen = document.getElementById('welcomeScreen');
 const mainApp = document.getElementById('mainApp');
 const userNameInput = document.getElementById('userNameInput');
@@ -61,7 +64,7 @@ async function loginUser(name) {
     mainApp.style.display = "block";
     greetingText.textContent = `${name}'s Moosik`;
     await fetchCloudFavorites();
-    // Load initial trending music on start securely via backend
+    // Load default trending tracks on start
     searchDefaultMusic("Malayalam hits");
 }
 
@@ -94,8 +97,7 @@ async function executeSearch() {
 async function fetchYouTubeTracks(query) {
     resultsList.innerHTML = `<div class="status-msg">Searching YouTube...</div>`;
     try {
-        // Calls your secure Vercel serverless function, hiding the API key completely
-        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=8&q=${encodeURIComponent(query)}&type=video&key=${YOUTUBE_API_KEY}`);
         const data = await res.json();
         
         if (!data.items || data.items.length === 0) {
@@ -113,7 +115,7 @@ async function fetchYouTubeTracks(query) {
         
         displayTracks(tracks);
     } catch (err) {
-        resultsList.innerHTML = `<div class="status-msg">Search error. Try again.</div>`;
+        resultsList.innerHTML = `<div class="status-msg">Search error. Please verify API key.</div>`;
     }
 }
 

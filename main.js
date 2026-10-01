@@ -1,24 +1,46 @@
 import './style.css';
 
-// 1. Update the UI to include a Favorites section
+// 1. Inject the UI (Welcome Screen + Main App)
 document.querySelector('#app').innerHTML = `
-  <div class="glass-panel">
-    <h1>Moosik Pro</h1>
-    <div class="search-container">
-        <input type="text" id="searchInput" placeholder="Search any song...">
-        <button id="searchBtn">Find</button>
-    </div>
-    
-    <audio id="audioPlayer" controls></audio>
-    
-    <div id="resultsList" class="results-container"></div>
-    
-    <div class="favorites-section">
-        <h2 style="font-size: 1.2rem; margin-top: 30px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">❤️️ My Favorites</h2>
-        <div id="favoritesList" class="results-container"></div>
-    </div>
+  <!-- The Name Gate -->
+  <div id="welcomeScreen" class="glass-panel">
+      <h1>Welcome to Moosik</h1>
+      <div class="search-container">
+          <input type="text" id="userNameInput" placeholder="Enter your full name...">
+          <button id="enterAppBtn">Enter</button>
+      </div>
+  </div>
+
+  <!-- The Main Player (Hidden initially) -->
+  <div id="mainApp" class="glass-panel" style="display: none;">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+          <h1 id="greetingText" style="margin: 0; font-size: 1.8rem;">Moosik</h1>
+          <button id="switchUserBtn" style="padding: 6px 12px; font-size: 0.8rem; background: rgba(255,255,255,0.1);">Switch User</button>
+      </div>
+      
+      <div class="search-container">
+          <input type="text" id="searchInput" placeholder="Search any song...">
+          <button id="searchBtn">Find</button>
+      </div>
+      
+      <audio id="audioPlayer" controls></audio>
+      
+      <div id="resultsList" class="results-container"></div>
+      
+      <div class="favorites-section">
+          <h2 style="font-size: 1.2rem; margin-top: 30px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 15px;">❤ My Favorites</h2>
+          <div id="favoritesList" class="results-container"></div>
+      </div>
   </div>
 `;
+
+// 2. Grab DOM Elements
+const welcomeScreen = document.getElementById('welcomeScreen');
+const mainApp = document.getElementById('mainApp');
+const userNameInput = document.getElementById('userNameInput');
+const enterAppBtn = document.getElementById('enterAppBtn');
+const switchUserBtn = document.getElementById('switchUserBtn');
+const greetingText = document.getElementById('greetingText');
 
 const searchBtn = document.getElementById('searchBtn');
 const searchInput = document.getElementById('searchInput');
@@ -26,14 +48,45 @@ const resultsList = document.getElementById('resultsList');
 const favoritesList = document.getElementById('favoritesList');
 const audioPlayer = document.getElementById('audioPlayer');
 
-// 2. Load saved favorites from local storage when the app opens
-let favorites = JSON.parse(localStorage.getItem('moosik_favorites')) || [];
-renderFavorites();
+let currentUser = "";
 
+// 3. User Login Logic
+// Check if they already logged in recently
+const savedUser = localStorage.getItem('moosik_active_user');
+if (savedUser) {
+    loginUser(savedUser);
+}
+
+enterAppBtn.addEventListener('click', () => {
+    const nameTyped = userNameInput.value.trim();
+    if (nameTyped) {
+        localStorage.setItem('moosik_active_user', nameTyped);
+        loginUser(nameTyped);
+    }
+});
+
+switchUserBtn.addEventListener('click', () => {
+    localStorage.removeItem('moosik_active_user');
+    currentUser = "";
+    audioPlayer.pause();
+    mainApp.style.display = "none";
+    welcomeScreen.style.display = "block";
+    userNameInput.value = "";
+});
+
+function loginUser(name) {
+    currentUser = name;
+    welcomeScreen.style.display = "none";
+    mainApp.style.display = "block";
+    greetingText.textContent = `${name}'s Moosik`;
+    renderFavorites(); // Load ONLY this user's music
+}
+
+// 4. Audius Search Logic
 searchBtn.addEventListener('click', async () => {
     const query = searchInput.value.trim();
     if (!query) return;
-    resultsList.innerHTML = "<p>Searching...</p>";
+    resultsList.innerHTML = "<p>Searching Audius...</p>";
 
     try {
         const hostRes = await fetch('https://api.audius.co');
@@ -58,16 +111,14 @@ searchBtn.addEventListener('click', async () => {
                         <strong>${track.title}</strong>
                         <span>${track.user.name}</span>
                     </div>
-                    <button class="save-btn" style="padding: 5px 10px; font-size: 0.8rem;">Save</button>
+                    <button class="save-btn" style="padding: 5px 10px; font-size: 0.8rem; background: rgba(45, 172, 252, 0.3);">Save</button>
                 `;
                 
-                // Click the image or text to play
                 trackDiv.querySelector('.list-art').addEventListener('click', () => playSong(streamUrl));
                 trackDiv.querySelector('.track-info').addEventListener('click', () => playSong(streamUrl));
 
-                // Click the save button to add to favorites
                 trackDiv.querySelector('.save-btn').addEventListener('click', (e) => {
-                    e.stopPropagation(); // Prevents the song from playing when you just want to save it
+                    e.stopPropagation();
                     saveFavorite({ id: track.id, title: track.title, artist: track.user.name, artwork, streamUrl });
                 });
 
@@ -86,29 +137,43 @@ function playSong(url) {
     audioPlayer.play();
 }
 
-// 3. Logic to save the song permanently
+// 5. User-Specific Database Logic (The "Soft Login" Database)
+function getUserFavorites() {
+    // Pull the master database containing everyone's favorites
+    const masterDB = JSON.parse(localStorage.getItem('moosik_master_db')) || {};
+    // Return only the array matching the current user's name
+    return masterDB[currentUser] || [];
+}
+
 function saveFavorite(songData) {
-    // Check if the song is already in the list
-    const isAlreadySaved = favorites.some(fav => fav.id === songData.id);
+    const masterDB = JSON.parse(localStorage.getItem('moosik_master_db')) || {};
+    
+    // If this user has no favorites yet, create an empty array for them
+    if (!masterDB[currentUser]) {
+        masterDB[currentUser] = [];
+    }
+    
+    const userFavorites = masterDB[currentUser];
+    const isAlreadySaved = userFavorites.some(fav => fav.id === songData.id);
     
     if (!isAlreadySaved) {
-        favorites.push(songData);
-        // Save to browser memory
-        localStorage.setItem('moosik_favorites', JSON.stringify(favorites));
+        userFavorites.push(songData);
+        // Save the updated master database back to the browser
+        localStorage.setItem('moosik_master_db', JSON.stringify(masterDB));
         renderFavorites();
     }
 }
 
-// 4. Logic to display the saved songs
 function renderFavorites() {
     favoritesList.innerHTML = "";
+    const userFavorites = getUserFavorites();
     
-    if (favorites.length === 0) {
-        favoritesList.innerHTML = "<p style='font-size: 0.85rem; color: #888;'>No favorites yet. Search and save some!</p>";
+    if (userFavorites.length === 0) {
+        favoritesList.innerHTML = `<p style='font-size: 0.85rem; color: #888;'>No favorites found for ${currentUser}.</p>`;
         return;
     }
 
-    favorites.forEach((fav, index) => {
+    userFavorites.forEach((fav, index) => {
         const favDiv = document.createElement('div');
         favDiv.className = 'track-item';
         favDiv.innerHTML = `
@@ -123,11 +188,11 @@ function renderFavorites() {
         favDiv.querySelector('.list-art').addEventListener('click', () => playSong(fav.streamUrl));
         favDiv.querySelector('.track-info').addEventListener('click', () => playSong(fav.streamUrl));
         
-        // Remove from favorites
         favDiv.querySelector('.remove-btn').addEventListener('click', (e) => {
             e.stopPropagation();
-            favorites.splice(index, 1);
-            localStorage.setItem('moosik_favorites', JSON.stringify(favorites));
+            const masterDB = JSON.parse(localStorage.getItem('moosik_master_db'));
+            masterDB[currentUser].splice(index, 1); // Remove the song from this user's list
+            localStorage.setItem('moosik_master_db', JSON.stringify(masterDB));
             renderFavorites();
         });
 
@@ -135,6 +200,7 @@ function renderFavorites() {
     });
 }
 
+// 6. Service Worker for Offline Play
 if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
         navigator.serviceWorker.register('/sw.js');

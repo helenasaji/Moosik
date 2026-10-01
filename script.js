@@ -19,31 +19,6 @@ let currentUser = "";
 let cloudFavorites = [];
 let ytPlayer = null;
 
-// Curated library (You can add any YouTube video ID here for Malayalam or global tracks!)
-const YOUTUBE_TRACKS = [
-    {
-        id: "yt-1",
-        name: "Thumbi Penne (Sample)",
-        artist_name: "Malayalam Hits",
-        image: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=150&auto=format&fit=crop&q=80",
-        videoId: "kJQP7kiw5Fk" // Example placeholder video ID
-    },
-    {
-        id: "yt-2",
-        name: "Acoustic Chill Vibes",
-        artist_name: "Vlog Music",
-        image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150&auto=format&fit=crop&q=80",
-        videoId: "5qap5aO4i9A"
-    },
-    {
-        id: "yt-3",
-        name: "Kerala Monsoons Lo-Fi",
-        artist_name: "God's Own Country",
-        image: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=150&auto=format&fit=crop&q=80",
-        videoId: "jfKfPfyJRdk"
-    }
-];
-
 // YouTube API Callback
 window.onYouTubeIframeAPIReady = function() {
     ytPlayer = new YT.Player('youtubePlayer', {
@@ -86,7 +61,8 @@ async function loginUser(name) {
     mainApp.style.display = "block";
     greetingText.textContent = `${name}'s Moosik`;
     await fetchCloudFavorites();
-    loadDefaultTracks();
+    // Load initial trending music on start securely via backend
+    searchDefaultMusic("Malayalam hits");
 }
 
 async function fetchCloudFavorites() {
@@ -101,35 +77,48 @@ async function fetchCloudFavorites() {
     }
 }
 
-function loadDefaultTracks() {
-    displayTracks(YOUTUBE_TRACKS);
-}
-
 searchBtn.addEventListener('click', executeSearch);
 searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') executeSearch(); });
 
-function executeSearch() {
-    const query = searchInput.value.trim().toLowerCase();
-    if (!query) {
-        loadDefaultTracks();
-        return;
+async function searchDefaultMusic(query) {
+    resultsList.innerHTML = `<div class="status-msg">Loading music...</div>`;
+    await fetchYouTubeTracks(query);
+}
+
+async function executeSearch() {
+    const query = searchInput.value.trim();
+    if (!query) return;
+    await fetchYouTubeTracks(query);
+}
+
+async function fetchYouTubeTracks(query) {
+    resultsList.innerHTML = `<div class="status-msg">Searching YouTube...</div>`;
+    try {
+        // Calls your secure Vercel serverless function, hiding the API key completely
+        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
+        const data = await res.json();
+        
+        if (!data.items || data.items.length === 0) {
+            resultsList.innerHTML = `<div class="status-msg">No tracks found.</div>`;
+            return;
+        }
+
+        const tracks = data.items.map(item => ({
+            id: item.id.videoId,
+            name: item.snippet.title,
+            artist_name: item.snippet.channelTitle,
+            image: item.snippet.thumbnails.medium.url,
+            videoId: item.id.videoId
+        }));
+        
+        displayTracks(tracks);
+    } catch (err) {
+        resultsList.innerHTML = `<div class="status-msg">Search error. Try again.</div>`;
     }
-    
-    const filtered = YOUTUBE_TRACKS.filter(track => 
-        track.name.toLowerCase().includes(query) || 
-        track.artist_name.toLowerCase().includes(query)
-    );
-    
-    displayTracks(filtered);
 }
 
 function displayTracks(tracks) {
     resultsList.innerHTML = "";
-    if (!tracks || tracks.length === 0) {
-        resultsList.innerHTML = `<div class="status-msg">No tracks found. Try searching 'Malayalam' or 'Chill'.</div>`;
-        return;
-    }
-
     tracks.forEach(track => {
         const isSaved = cloudFavorites.some(fav => fav.track_id === String(track.id));
 
@@ -158,7 +147,7 @@ function displayTracks(tracks) {
                 title: track.name,
                 artist: track.artist_name,
                 artwork: track.image,
-                stream_url: track.videoId // storing videoId in stream_url field for cloud playback
+                stream_url: track.videoId
             }, saveBtn);
         });
 
@@ -206,7 +195,6 @@ function renderFavorites() {
             <button type="button" class="remove-btn">✕</button>
         `;
 
-        // Clicking a favorite loads its YouTube video ID
         favDiv.querySelector('.list-art').addEventListener('click', () => playYouTubeVideo(fav.stream_url));
         favDiv.querySelector('.track-info').addEventListener('click', () => playYouTubeVideo(fav.stream_url));
 
@@ -220,7 +208,9 @@ function renderFavorites() {
 
             if (!error) {
                 await fetchCloudFavorites();
-                executeSearch();
+                if (searchInput.value.trim()) {
+                    executeSearch();
+                }
             }
         });
 

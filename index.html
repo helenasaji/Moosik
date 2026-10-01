@@ -3,15 +3,17 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Moosik Pro</title>
-    <link rel="stylesheet" href="style.css?v=8">
+    <title>Moosik - YouTube Music Style</title>
+    <!-- Stable Supabase CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <link rel="stylesheet" href="style.css?v=10">
 </head>
 <body>
     <!-- SCREEN 1: Name Gate -->
     <div id="welcomeScreen" class="glass-panel">
-        <h1>Welcome to Moosik</h1>
+        <h1>Moosik Music</h1>
         <p style="text-align: center; color: rgba(255,255,255,0.7); font-size: 0.9rem; margin-top: -8px; margin-bottom: 18px;">
-            Enter your name to load your cloud player
+            Enter your name to load your cloud library
         </p>
         <div class="search-container">
             <input type="text" id="userNameInput" placeholder="Enter your full name...">
@@ -19,24 +21,36 @@
         </div>
     </div>
 
-    <!-- SCREEN 2: Main Player -->
-    <div id="mainApp" class="glass-panel" style="display: none;">
+    <!-- SCREEN 2: YouTube Music Style App -->
+    <div id="mainApp" class="glass-panel" style="display: none; max-width: 600px;">
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-            <h1 id="greetingText" style="margin: 0; font-size: 1.5rem; text-align: left;">Moosik</h1>
+            <h1 id="greetingText" style="margin: 0; font-size: 1.4rem; text-align: left;">Moosik</h1>
             <button type="button" id="switchUserBtn" style="padding: 6px 12px; font-size: 0.75rem; background: rgba(255,255,255,0.1);">Switch User</button>
         </div>
+
+        <!-- Search Bar -->
         <div class="search-container">
-            <input type="text" id="searchInput" placeholder="Search Jamendo tracks...">
-            <button type="button" id="searchBtn">Find</button>
+            <input type="text" id="searchInput" placeholder="Search songs, artists, Malayalam hits...">
+            <button type="button" id="searchBtn">Search</button>
         </div>
-        <audio id="audioPlayer" controls></audio>
+
+        <!-- Embedded YouTube Player Container -->
+        <div id="playerContainer" style="margin: 16px 0; border-radius: 12px; overflow: hidden; background: #000; display: none;">
+            <div id="youtubePlayer"></div>
+        </div>
+
+        <!-- Results List -->
         <div id="resultsList" class="results-container"></div>
+
+        <!-- Cloud Favorites Section -->
         <div class="favorites-section">
-            <h2 style="font-size: 1.1rem; margin: 24px 0 12px 0; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px;">❤ Cloud Favorites</h2>
+            <h2 style="font-size: 1.05rem; margin: 24px 0 12px 0; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px;">❤ Cloud Favorites</h2>
             <div id="favoritesList" class="results-container"></div>
         </div>
     </div>
 
-    <script src="script.js?v=8"></script>
+    <!-- YouTube IFrame API -->
+    <script src="https://www.youtube.com/iframe_api"></script>
+    <script src="script.js?v=10"></script>
 </body>
 </html>

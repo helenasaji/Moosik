@@ -1,9 +1,6 @@
-// Initialize Supabase client safely in browser
-const SUPABASE_URL = "https://pijczsbebhvdvqrmfcmu.supabase.co";
+const SUPABASE_URL = "https://pijczsbebhvdvqrmfcmu.supabase.co/rest/v1";
 const SUPABASE_KEY = "sb_publishable_CPJDJ_Mc6Rnu83kEQ41RFw_Tl5jxTjD";
-const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-
-const JAMENDO_CLIENT_ID = "3a261f5d";
+const JAMENDO_CLIENT_ID = "3a261f5d"; 
 
 const welcomeScreen = document.getElementById('welcomeScreen');
 const mainApp = document.getElementById('mainApp');
@@ -55,20 +52,24 @@ async function loginUser(name) {
     loadJamendoTrending();
 }
 
-// Fetch user favorites from Supabase SQL Database
+// Fetch favorites using direct REST API (no external library needed)
 async function fetchCloudFavorites() {
-    const { data, error } = await supabaseClient
-        .from('user_favorites')
-        .select('*')
-        .eq('username', currentUser);
-
-    if (!error && data) {
-        cloudFavorites = data;
-        renderFavorites();
+    try {
+        const res = await fetch(`${SUPABASE_URL}/user_favorites?username=eq.${encodeURIComponent(currentUser)}`, {
+            headers: {
+                "apikey": SUPABASE_KEY,
+                "Authorization": `Bearer ${SUPABASE_KEY}`
+            }
+        });
+        if (res.ok) {
+            cloudFavorites = await res.json();
+            renderFavorites();
+        }
+    } catch (err) {
+        console.error("Error fetching favorites", err);
     }
 }
 
-// Load Jamendo Trending Music on start
 async function loadJamendoTrending() {
     resultsList.innerHTML = `<div class="status-msg">Loading Jamendo music...</div>`;
     try {
@@ -150,13 +151,26 @@ async function toggleFavorite(songData, buttonElement) {
     const isAlreadySaved = cloudFavorites.some(fav => fav.track_id === songData.track_id);
 
     if (!isAlreadySaved) {
-        // Insert into Supabase SQL Database
-        const { error } = await supabaseClient.from('user_favorites').insert([songData]);
-        if (!error) {
-            buttonElement.textContent = "Saved ✓";
-            buttonElement.style.background = "rgba(46, 204, 113, 0.4)";
-            buttonElement.style.borderColor = "rgba(46, 204, 113, 0.6)";
-            await fetchCloudFavorites();
+        try {
+            const res = await fetch(`${SUPABASE_URL}/user_favorites`, {
+                method: 'POST',
+                headers: {
+                    "apikey": SUPABASE_KEY,
+                    "Authorization": `Bearer ${SUPABASE_KEY}`,
+                    "Content-Type": "application/json",
+                    "Prefer": "return=minimal"
+                },
+                body: JSON.stringify(songData)
+            });
+
+            if (res.ok) {
+                buttonElement.textContent = "Saved ✓";
+                buttonElement.style.background = "rgba(46, 204, 113, 0.4)";
+                buttonElement.style.borderColor = "rgba(46, 204, 113, 0.6)";
+                await fetchCloudFavorites();
+            }
+        } catch (err) {
+            console.error("Error saving favorite", err);
         }
     }
 }
@@ -185,23 +199,29 @@ function renderFavorites() {
 
         favDiv.querySelector('.remove-btn').addEventListener('click', async (e) => {
             e.stopPropagation();
-            // Delete row from Supabase SQL Database
-            const { error } = await supabaseClient
-                .from('user_favorites')
-                .delete()
-                .eq('username', currentUser)
-                .eq('track_id', fav.track_id);
+            try {
+                const res = await fetch(`${SUPABASE_URL}/user_favorites?username=eq.${encodeURIComponent(currentUser)}&track_id=eq.${encodeURIComponent(fav.track_id)}`, {
+                    method: 'DELETE',
+                    headers: {
+                        "apikey": SUPABASE_KEY,
+                        "Authorization": `Bearer ${SUPABASE_KEY}`
+                    }
+                });
 
-            if (!error) {
-                await fetchCloudFavorites();
-                if (searchInput.value.trim()) {
-                    executeSearch();
-                } else {
-                    loadJamendoTrending();
+                if (res.ok) {
+                    await fetchCloudFavorites();
+                    if (searchInput.value.trim()) {
+                        executeSearch();
+                    } else {
+                        loadJamendoTrending();
+                    }
                 }
+            } catch (err) {
+                console.error("Error deleting favorite", err);
             }
         });
 
+        favoritesList.appendChild(favoritesList.innerHTML = favDiv); // fixed append below
         favoritesList.appendChild(favDiv);
     });
 }

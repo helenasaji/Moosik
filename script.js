@@ -1,6 +1,7 @@
-const SUPABASE_URL = "https://pijczsbebhvdvqrmfcmu.supabase.co/rest/v1";
+// Initialize Supabase client
+const SUPABASE_URL = "https://pijczsbebhvdvqrmfcmu.supabase.co";
 const SUPABASE_KEY = "sb_publishable_CPJDJ_Mc6Rnu83kEQ41RFw_Tl5jxTjD";
-const JAMENDO_CLIENT_ID = "3a261f5d"; 
+const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 const welcomeScreen = document.getElementById('welcomeScreen');
 const mainApp = document.getElementById('mainApp');
@@ -12,10 +13,46 @@ const searchBtn = document.getElementById('searchBtn');
 const searchInput = document.getElementById('searchInput');
 const resultsList = document.getElementById('resultsList');
 const favoritesList = document.getElementById('favoritesList');
-const audioPlayer = document.getElementById('audioPlayer');
+const playerContainer = document.getElementById('playerContainer');
 
 let currentUser = "";
 let cloudFavorites = [];
+let ytPlayer = null;
+
+// Curated library (You can add any YouTube video ID here for Malayalam or global tracks!)
+const YOUTUBE_TRACKS = [
+    {
+        id: "yt-1",
+        name: "Thumbi Penne (Sample)",
+        artist_name: "Malayalam Hits",
+        image: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=150&auto=format&fit=crop&q=80",
+        videoId: "kJQP7kiw5Fk" // Example placeholder video ID
+    },
+    {
+        id: "yt-2",
+        name: "Acoustic Chill Vibes",
+        artist_name: "Vlog Music",
+        image: "https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=150&auto=format&fit=crop&q=80",
+        videoId: "5qap5aO4i9A"
+    },
+    {
+        id: "yt-3",
+        name: "Kerala Monsoons Lo-Fi",
+        artist_name: "God's Own Country",
+        image: "https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=150&auto=format&fit=crop&q=80",
+        videoId: "jfKfPfyJRdk"
+    }
+];
+
+// YouTube API Callback
+window.onYouTubeIframeAPIReady = function() {
+    ytPlayer = new YT.Player('youtubePlayer', {
+        height: '200',
+        width: '100%',
+        videoId: '',
+        playerVars: { 'autoplay': 1, 'controls': 1 }
+    });
+};
 
 // Check local session state
 const savedUser = localStorage.getItem('moosik_active_user');
@@ -36,8 +73,8 @@ switchUserBtn.addEventListener('click', () => {
     localStorage.removeItem('moosik_active_user');
     currentUser = "";
     cloudFavorites = [];
-    audioPlayer.pause();
-    audioPlayer.src = "";
+    if (ytPlayer && ytPlayer.stopVideo) ytPlayer.stopVideo();
+    playerContainer.style.display = "none";
     mainApp.style.display = "none";
     welcomeScreen.style.display = "block";
     userNameInput.value = "";
@@ -49,70 +86,57 @@ async function loginUser(name) {
     mainApp.style.display = "block";
     greetingText.textContent = `${name}'s Moosik`;
     await fetchCloudFavorites();
-    loadJamendoTrending();
+    loadDefaultTracks();
 }
 
-// Fetch favorites using direct REST API (no external library needed)
 async function fetchCloudFavorites() {
-    try {
-        const res = await fetch(`${SUPABASE_URL}/user_favorites?username=eq.${encodeURIComponent(currentUser)}`, {
-            headers: {
-                "apikey": SUPABASE_KEY,
-                "Authorization": `Bearer ${SUPABASE_KEY}`
-            }
-        });
-        if (res.ok) {
-            cloudFavorites = await res.json();
-            renderFavorites();
-        }
-    } catch (err) {
-        console.error("Error fetching favorites", err);
+    const { data, error } = await supabaseClient
+        .from('user_favorites')
+        .select('*')
+        .eq('username', currentUser);
+
+    if (!error && data) {
+        cloudFavorites = data;
+        renderFavorites();
     }
 }
 
-async function loadJamendoTrending() {
-    resultsList.innerHTML = `<div class="status-msg">Loading Jamendo music...</div>`;
-    try {
-        const res = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=${JAMENDO_CLIENT_ID}&format=json&limit=6&include=musicinfo`);
-        const data = await res.json();
-        displayTracks(data.results);
-    } catch (err) {
-        resultsList.innerHTML = `<div class="status-msg">Use search above to find tracks.</div>`;
-    }
+function loadDefaultTracks() {
+    displayTracks(YOUTUBE_TRACKS);
 }
 
 searchBtn.addEventListener('click', executeSearch);
 searchInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') executeSearch(); });
 
-async function executeSearch() {
-    const query = searchInput.value.trim();
-    if (!query) return;
-    resultsList.innerHTML = `<div class="status-msg">Searching Jamendo...</div>`;
-    try {
-        const res = await fetch(`https://api.jamendo.com/v3.0/tracks/?client_id=${JAMENDO_CLIENT_ID}&format=json&limit=6&search=${encodeURIComponent(query)}`);
-        const data = await res.json();
-        displayTracks(data.results);
-    } catch (err) {
-        resultsList.innerHTML = `<div class="status-msg">Network error. Try again.</div>`;
+function executeSearch() {
+    const query = searchInput.value.trim().toLowerCase();
+    if (!query) {
+        loadDefaultTracks();
+        return;
     }
+    
+    const filtered = YOUTUBE_TRACKS.filter(track => 
+        track.name.toLowerCase().includes(query) || 
+        track.artist_name.toLowerCase().includes(query)
+    );
+    
+    displayTracks(filtered);
 }
 
 function displayTracks(tracks) {
     resultsList.innerHTML = "";
     if (!tracks || tracks.length === 0) {
-        resultsList.innerHTML = `<div class="status-msg">No tracks found.</div>`;
+        resultsList.innerHTML = `<div class="status-msg">No tracks found. Try searching 'Malayalam' or 'Chill'.</div>`;
         return;
     }
 
     tracks.forEach(track => {
-        const artwork = track.image || 'https://via.placeholder.com/150/1a1a24/ffffff?text=Moosik';
-        const streamUrl = track.audio;
         const isSaved = cloudFavorites.some(fav => fav.track_id === String(track.id));
 
         const trackDiv = document.createElement('div');
         trackDiv.className = 'track-item';
         trackDiv.innerHTML = `
-            <img src="${artwork}" alt="Cover" class="list-art">
+            <img src="${track.image}" alt="Cover" class="list-art">
             <div class="track-info" style="flex: 1;">
                 <strong>${escapeHtml(track.name)}</strong>
                 <span>${escapeHtml(track.artist_name)}</span>
@@ -122,8 +146,8 @@ function displayTracks(tracks) {
             </button>
         `;
 
-        trackDiv.querySelector('.list-art').addEventListener('click', () => playSong(streamUrl));
-        trackDiv.querySelector('.track-info').addEventListener('click', () => playSong(streamUrl));
+        trackDiv.querySelector('.list-art').addEventListener('click', () => playYouTubeVideo(track.videoId));
+        trackDiv.querySelector('.track-info').addEventListener('click', () => playYouTubeVideo(track.videoId));
 
         const saveBtn = trackDiv.querySelector('.save-btn');
         saveBtn.addEventListener('click', (e) => {
@@ -133,8 +157,8 @@ function displayTracks(tracks) {
                 track_id: String(track.id),
                 title: track.name,
                 artist: track.artist_name,
-                artwork,
-                stream_url: streamUrl
+                artwork: track.image,
+                stream_url: track.videoId // storing videoId in stream_url field for cloud playback
             }, saveBtn);
         });
 
@@ -142,35 +166,23 @@ function displayTracks(tracks) {
     });
 }
 
-function playSong(url) {
-    audioPlayer.src = url;
-    audioPlayer.play().catch(() => {});
+function playYouTubeVideo(videoId) {
+    playerContainer.style.display = "block";
+    if (ytPlayer && ytPlayer.loadVideoById) {
+        ytPlayer.loadVideoById(videoId);
+    }
 }
 
 async function toggleFavorite(songData, buttonElement) {
     const isAlreadySaved = cloudFavorites.some(fav => fav.track_id === songData.track_id);
 
     if (!isAlreadySaved) {
-        try {
-            const res = await fetch(`${SUPABASE_URL}/user_favorites`, {
-                method: 'POST',
-                headers: {
-                    "apikey": SUPABASE_KEY,
-                    "Authorization": `Bearer ${SUPABASE_KEY}`,
-                    "Content-Type": "application/json",
-                    "Prefer": "return=minimal"
-                },
-                body: JSON.stringify(songData)
-            });
-
-            if (res.ok) {
-                buttonElement.textContent = "Saved ✓";
-                buttonElement.style.background = "rgba(46, 204, 113, 0.4)";
-                buttonElement.style.borderColor = "rgba(46, 204, 113, 0.6)";
-                await fetchCloudFavorites();
-            }
-        } catch (err) {
-            console.error("Error saving favorite", err);
+        const { error } = await supabaseClient.from('user_favorites').insert([songData]);
+        if (!error) {
+            buttonElement.textContent = "Saved ✓";
+            buttonElement.style.background = "rgba(46, 204, 113, 0.4)";
+            buttonElement.style.borderColor = "rgba(46, 204, 113, 0.6)";
+            await fetchCloudFavorites();
         }
     }
 }
@@ -194,34 +206,24 @@ function renderFavorites() {
             <button type="button" class="remove-btn">✕</button>
         `;
 
-        favDiv.querySelector('.list-art').addEventListener('click', () => playSong(fav.stream_url));
-        favDiv.querySelector('.track-info').addEventListener('click', () => playSong(fav.stream_url));
+        // Clicking a favorite loads its YouTube video ID
+        favDiv.querySelector('.list-art').addEventListener('click', () => playYouTubeVideo(fav.stream_url));
+        favDiv.querySelector('.track-info').addEventListener('click', () => playYouTubeVideo(fav.stream_url));
 
         favDiv.querySelector('.remove-btn').addEventListener('click', async (e) => {
             e.stopPropagation();
-            try {
-                const res = await fetch(`${SUPABASE_URL}/user_favorites?username=eq.${encodeURIComponent(currentUser)}&track_id=eq.${encodeURIComponent(fav.track_id)}`, {
-                    method: 'DELETE',
-                    headers: {
-                        "apikey": SUPABASE_KEY,
-                        "Authorization": `Bearer ${SUPABASE_KEY}`
-                    }
-                });
+            const { error } = await supabaseClient
+                .from('user_favorites')
+                .delete()
+                .eq('username', currentUser)
+                .eq('track_id', fav.track_id);
 
-                if (res.ok) {
-                    await fetchCloudFavorites();
-                    if (searchInput.value.trim()) {
-                        executeSearch();
-                    } else {
-                        loadJamendoTrending();
-                    }
-                }
-            } catch (err) {
-                console.error("Error deleting favorite", err);
+            if (!error) {
+                await fetchCloudFavorites();
+                executeSearch();
             }
         });
 
-        favoritesList.appendChild(favoritesList.innerHTML = favDiv); // fixed append below
         favoritesList.appendChild(favDiv);
     });
 }

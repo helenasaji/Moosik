@@ -4,7 +4,7 @@ const SUPABASE_KEY = "sb_publishable_CPJDJ_Mc6Rnu83kEQ41RFw_Tl5jxTjD";
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
 // Your API key is safely protected by your Google Cloud website domain restriction
-const YOUTUBE_API_KEY = "AIzaSyAQoC-rTdxBeRzW7_ic0JMZocXSI_-T0cY";
+const YOUTUBE_API_KEY = "Your_API_Key";
 
 const welcomeScreen = document.getElementById('welcomeScreen');
 const mainApp = document.getElementById('mainApp');

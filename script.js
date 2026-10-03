@@ -93,9 +93,14 @@ async function executeSearch() {
 async function fetchYouTubeTracks(query) {
     resultsList.innerHTML = `<div class="status-msg">Searching YouTube...</div>`;
     try {
-        // Calling your secure Vercel backend route
         const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
         const data = await res.json();
+        
+        // This will print the exact Google Cloud error on your screen if the key is blocked!
+        if (data.error) {
+            resultsList.innerHTML = `<div class="status-msg" style="color:#ff6b6b;">Error: ${data.error.message || data.error}</div>`;
+            return;
+        }
         
         if (!data.items || data.items.length === 0) {
             resultsList.innerHTML = `<div class="status-msg">No tracks found.</div>`;
@@ -112,7 +117,7 @@ async function fetchYouTubeTracks(query) {
         
         displayTracks(tracks, resultsList);
     } catch (err) {
-        resultsList.innerHTML = `<div class="status-msg">Search error. Try again.</div>`;
+        resultsList.innerHTML = `<div class="status-msg" style="color:#ff6b6b;">Failed to reach backend server.</div>`;
     }
 }
 

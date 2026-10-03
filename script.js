@@ -172,15 +172,30 @@ function displayTracks(tracks, container) {
 function playYouTubeVideo(videoId, index = -1, isFavorite = false) {
     playerContainer.style.display = "block";
     
-    // Check if we are in favorites and if there is a next song available
-    let nextButtonHtml = "";
+    let playlistString = "";
+    
+    // If we clicked a favorite, grab all the songs AFTER it to create a native playlist
     if (isFavorite && index !== -1 && index < cloudFavorites.length - 1) {
-        nextButtonHtml = `
-            <button id="nextFavBtn" style="margin-top: 10px; padding: 10px; width: 100%; background: #2ecc71; color: #111; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
-                Next Track ⏭️
-            </button>
-        `;
+        // Create an array of just the video IDs for the upcoming tracks
+        const upcomingSongs = cloudFavorites.slice(index + 1).map(song => song.stream_url);
+        // Join them with commas and attach them to the YouTube URL
+        playlistString = `&playlist=${upcomingSongs.join(',')}`;
     }
+
+    // Inject the iframe with the new playlistString attached
+    playerContainer.innerHTML = `
+        <iframe 
+            id="youtubePlayer"
+            width="100%" 
+            height="200" 
+            src="https://www.youtube.com/embed/${videoId}?autoplay=1${playlistString}" 
+            frameborder="0" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+            allowfullscreen>
+        </iframe>
+    `;
+}
+
 
     playerContainer.innerHTML = `
         <iframe 

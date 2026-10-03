@@ -175,7 +175,8 @@ async function toggleFavorite(songData, buttonElement) {
     const isAlreadySaved = cloudFavorites.some(fav => fav.track_id === songData.track_id);
 
     if (!isAlreadySaved) {
-        const { data, error } = await supabaseClient.from('user_favorites').insert([songData]).select();
+        // Step 1: It is NOT saved yet, so we Insert/Save it
+        const { error } = await supabaseClient.from('user_favorites').insert([songData]);
         
         if (error) {
             console.error("Supabase Save Error Details:", error);
@@ -183,11 +184,35 @@ async function toggleFavorite(songData, buttonElement) {
             return;
         }
 
+        // Make button green to indicate it is saved
         buttonElement.textContent = "Saved ✓";
         buttonElement.style.background = "rgba(46, 204, 113, 0.4)";
         buttonElement.style.borderColor = "rgba(46, 204, 113, 0.6)";
-        await fetchCloudFavorites();
+        
+    } else {
+        // Step 2: It IS already saved, so we Delete/Remove it
+        const { error } = await supabaseClient
+            .from('user_favorites')
+            .delete()
+            .eq('username', songData.username)
+            .eq('track_id', songData.track_id); // Deletes only this specific track for this user[span_1](start_span)[span_1](end_span)[span_2](start_span)[span_2](end_span)
+            
+        if (error) {
+            console.error("Supabase Delete Error Details:", error);
+            alert("Could not remove: " + error.message);
+            return;
+        }
+
+        // Reset button back to the default "Save" state
+        buttonElement.textContent = "Save";
+        buttonElement.style.background = "";
+        buttonElement.style.borderColor = "";
     }
+    
+    // Refresh the cloud favorites list after either action so the sidebar updates instantly
+    await fetchCloudFavorites();
+}
+
 }
 
 function renderFavorites() {

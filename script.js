@@ -169,11 +169,19 @@ function displayTracks(tracks, container) {
     });
 }
 
-function playYouTubeVideo(videoId) {
-    // Show the container
+function playYouTubeVideo(videoId, index = -1, isFavorite = false) {
     playerContainer.style.display = "block";
     
-    // Directly inject a YouTube embed iframe that automatically plays
+    // Check if we are in favorites and if there is a next song available
+    let nextButtonHtml = "";
+    if (isFavorite && index !== -1 && index < cloudFavorites.length - 1) {
+        nextButtonHtml = `
+            <button id="nextFavBtn" style="margin-top: 10px; padding: 10px; width: 100%; background: #2ecc71; color: #111; border: none; border-radius: 5px; cursor: pointer; font-weight: bold;">
+                Next Track ⏭️
+            </button>
+        `;
+    }
+
     playerContainer.innerHTML = `
         <iframe 
             id="youtubePlayer"
@@ -184,7 +192,18 @@ function playYouTubeVideo(videoId) {
             allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
             allowfullscreen>
         </iframe>
+        ${nextButtonHtml}
     `;
+
+    // Make the Next button actually play the next song in the array
+    const nextBtn = document.getElementById('nextFavBtn');
+    if (nextBtn) {
+        nextBtn.addEventListener('click', () => {
+            const nextIndex = index + 1;
+            const nextTrack = cloudFavorites[nextIndex];
+            playYouTubeVideo(nextTrack.stream_url, nextIndex, true);
+        });
+    }
 }
 
 async function toggleFavorite(songData, buttonElement) {
@@ -211,7 +230,7 @@ async function toggleFavorite(songData, buttonElement) {
             .from('user_favorites')
             .delete()
             .eq('username', songData.username)
-            .eq('track_id', songData.track_id); // Deletes only this specific track for this user[span_1](start_span)[span_1](end_span)[span_2](start_span)[span_2](end_span)
+            .eq('track_id', songData.track_id); // Deletes only this specific track for this user
             
         if (error) {
             console.error("Supabase Delete Error Details:", error);
@@ -236,7 +255,7 @@ function renderFavorites() {
         return;
     }
 
-    cloudFavorites.forEach((fav) => {
+    cloudFavorites.forEach((fav, index) => {
         const favDiv = document.createElement('div');
         favDiv.className = 'track-item';
         favDiv.innerHTML = `
@@ -248,8 +267,9 @@ function renderFavorites() {
             <button type="button" class="remove-btn">✕</button>
         `;
 
-        favDiv.querySelector('.list-art').addEventListener('click', () => playYouTubeVideo(fav.stream_url));
-        favDiv.querySelector('.track-info').addEventListener('click', () => playYouTubeVideo(fav.stream_url));
+        // We pass the index and 'true' here to let the player know this is from the favorites list
+        favDiv.querySelector('.list-art').addEventListener('click', () => playYouTubeVideo(fav.stream_url, index, true));
+        favDiv.querySelector('.track-info').addEventListener('click', () => playYouTubeVideo(fav.stream_url, index, true));
 
         favDiv.querySelector('.remove-btn').addEventListener('click', async (e) => {
             e.stopPropagation();

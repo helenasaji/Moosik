@@ -196,31 +196,6 @@ function playYouTubeVideo(videoId, index = -1, isFavorite = false) {
     `;
 }
 
-
-    playerContainer.innerHTML = `
-        <iframe 
-            id="youtubePlayer"
-            width="100%" 
-            height="200" 
-            src="https://www.youtube.com/embed/${videoId}?autoplay=1" 
-            frameborder="0" 
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-            allowfullscreen>
-        </iframe>
-        ${nextButtonHtml}
-    `;
-
-    // Make the Next button actually play the next song in the array
-    const nextBtn = document.getElementById('nextFavBtn');
-    if (nextBtn) {
-        nextBtn.addEventListener('click', () => {
-            const nextIndex = index + 1;
-            const nextTrack = cloudFavorites[nextIndex];
-            playYouTubeVideo(nextTrack.stream_url, nextIndex, true);
-        });
-    }
-}
-
 async function toggleFavorite(songData, buttonElement) {
     const isAlreadySaved = cloudFavorites.some(fav => fav.track_id === songData.track_id);
 

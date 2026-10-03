@@ -170,10 +170,21 @@ function displayTracks(tracks, container) {
 }
 
 function playYouTubeVideo(videoId) {
+    // Show the container
     playerContainer.style.display = "block";
-    if (ytPlayer && ytPlayer.loadVideoById) {
-        ytPlayer.loadVideoById(videoId);
-    }
+    
+    // Directly inject a YouTube embed iframe that automatically plays
+    playerContainer.innerHTML = `
+        <iframe 
+            id="youtubePlayer"
+            width="100%" 
+            height="200" 
+            src="https://www.youtube.com/embed/${videoId}?autoplay=1" 
+            frameborder="0" 
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+            allowfullscreen>
+        </iframe>
+    `;
 }
 
 async function toggleFavorite(songData, buttonElement) {

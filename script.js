@@ -56,10 +56,15 @@ switchUserBtn.addEventListener('click', () => {
 });
 
 async function loginUser(name) {
-    currentUser = name;
+    // Force the database to use lowercase internally so all casing variations match exactly
+    currentUser = name.toLowerCase(); 
+    
     welcomeScreen.style.display = "none";
     mainApp.style.display = "block";
-    greetingText.textContent = `${name}'s Moosik`;
+    
+    // Use the originally typed name just for the visual greeting on screen
+    greetingText.textContent = `${name}'s Moosik`; 
+    
     await fetchCloudFavorites();
     searchDefaultMusic("Malayalam hits");
 }

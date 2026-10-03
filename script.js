@@ -3,9 +3,6 @@ const SUPABASE_URL = "https://pijczsbebhvdvqrmfcmu.supabase.co";
 const SUPABASE_KEY = "sb_publishable_CPJDJ_Mc6Rnu83kEQ41RFw_Tl5jxTjD";
 const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-// Your API key is safely protected by your Google Cloud website domain restriction
-const YOUTUBE_API_KEY = "Your_API_Key";
-
 const welcomeScreen = document.getElementById('welcomeScreen');
 const mainApp = document.getElementById('mainApp');
 const userNameInput = document.getElementById('userNameInput');
@@ -96,7 +93,8 @@ async function executeSearch() {
 async function fetchYouTubeTracks(query) {
     resultsList.innerHTML = `<div class="status-msg">Searching YouTube...</div>`;
     try {
-        const res = await fetch(`https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=8&q=${encodeURIComponent(query)}&type=video&key=${YOUTUBE_API_KEY}`);
+        // Calling your secure Vercel backend route
+        const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
         const data = await res.json();
         
         if (!data.items || data.items.length === 0) {
@@ -114,7 +112,7 @@ async function fetchYouTubeTracks(query) {
         
         displayTracks(tracks, resultsList);
     } catch (err) {
-        resultsList.innerHTML = `<div class="status-msg">Search error. Check API key.</div>`;
+        resultsList.innerHTML = `<div class="status-msg">Search error. Try again.</div>`;
     }
 }
 
@@ -141,11 +139,9 @@ function displayTracks(tracks, container) {
             </button>
         `;
 
-        // Click to play handling
         trackDiv.querySelector('.list-art').addEventListener('click', () => playYouTubeVideo(track.videoId));
         trackDiv.querySelector('.track-info').addEventListener('click', () => playYouTubeVideo(track.videoId));
 
-        // Save to Supabase handling
         const saveBtn = trackDiv.querySelector('.save-btn');
         saveBtn.addEventListener('click', (e) => {
             e.stopPropagation();
@@ -174,15 +170,18 @@ async function toggleFavorite(songData, buttonElement) {
     const isAlreadySaved = cloudFavorites.some(fav => fav.track_id === songData.track_id);
 
     if (!isAlreadySaved) {
-        const { error } = await supabaseClient.from('user_favorites').insert([songData]);
-        if (!error) {
-            buttonElement.textContent = "Saved ✓";
-            buttonElement.style.background = "rgba(46, 204, 113, 0.4)";
-            buttonElement.style.borderColor = "rgba(46, 204, 113, 0.6)";
-            await fetchCloudFavorites();
-        } else {
-            console.error("Supabase insert error:", error);
+        const { data, error } = await supabaseClient.from('user_favorites').insert([songData]).select();
+        
+        if (error) {
+            console.error("Supabase Save Error Details:", error);
+            alert("Could not save: " + error.message);
+            return;
         }
+
+        buttonElement.textContent = "Saved ✓";
+        buttonElement.style.background = "rgba(46, 204, 113, 0.4)";
+        buttonElement.style.borderColor = "rgba(46, 204, 113, 0.6)";
+        await fetchCloudFavorites();
     }
 }
 

@@ -218,8 +218,6 @@ async function toggleFavorite(songData, buttonElement) {
     await fetchCloudFavorites();
 }
 
-}
-
 function renderFavorites() {
     favoritesList.innerHTML = "";
     if (cloudFavorites.length === 0) {

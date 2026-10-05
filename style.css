@@ -1,5 +1,31 @@
 :root {
     color-scheme: dark;
+    --bg-main: #0f0f13;
+    --text-primary: #ffffff;
+    --text-secondary: rgba(255, 255, 255, 0.6);
+    --panel-bg: rgba(255, 255, 255, 0.05);
+    --input-bg: rgba(0, 0, 0, 0.35);
+    --border-color: rgba(255, 255, 255, 0.15);
+    --track-bg: rgba(0, 0, 0, 0.25);
+    --track-hover: rgba(255, 255, 255, 0.08);
+    --blob-1: rgba(98, 58, 162, 0.45);
+    --blob-2: rgba(45, 172, 252, 0.35);
+    --h1-gradient: linear-gradient(90deg, #b9935a, #e7c996);
+}
+
+[data-theme="light"] {
+    color-scheme: light;
+    --bg-main: #f0f4f8;
+    --text-primary: #0f172a;
+    --text-secondary: rgba(0, 0, 0, 0.6);
+    --panel-bg: rgba(255, 255, 255, 0.65);
+    --input-bg: rgba(255, 255, 255, 0.9);
+    --border-color: rgba(0, 0, 0, 0.1);
+    --track-bg: rgba(255, 255, 255, 0.6);
+    --track-hover: rgba(255, 255, 255, 0.95);
+    --blob-1: rgba(98, 58, 162, 0.15);
+    --blob-2: rgba(45, 172, 252, 0.15);
+    --h1-gradient: linear-gradient(90deg, #926f34, #b58d4a);
 }
 
 * {
@@ -10,37 +36,40 @@ body {
     margin: 0;
     padding: 20px;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    background-color: #0f0f13;
+    background-color: var(--bg-main);
     background-image: 
-        radial-gradient(circle at 15% 50%, rgba(98, 58, 162, 0.45), transparent 40%),
-        radial-gradient(circle at 85% 30%, rgba(45, 172, 252, 0.35), transparent 40%);
+        radial-gradient(circle at 15% 50%, var(--blob-1), transparent 40%),
+        radial-gradient(circle at 85% 30%, var(--blob-2), transparent 40%);
     background-attachment: fixed;
-    color: #ffffff;
+    color: var(--text-primary);
     display: flex;
     justify-content: center;
     align-items: flex-start;
     min-height: 100vh;
+    transition: background-color 0.4s ease, color 0.4s ease;
 }
 
 .glass-panel {
-    background: rgba(255, 255, 255, 0.05);
+    background: var(--panel-bg);
     backdrop-filter: blur(20px);
     -webkit-backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.12);
+    border: 1px solid var(--border-color);
     border-radius: 20px;
     padding: 24px;
     width: 100%;
     max-width: 440px;
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.37);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+    transition: background 0.4s ease, border-color 0.4s ease;
 }
 
 h1 {
     margin: 0 0 16px 0;
     font-size: 1.8rem;
     text-align: center;
-    background: linear-gradient(90deg, #b9935a, #e7c996);
+    background: var(--h1-gradient);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
+    transition: background 0.4s ease;
 }
 
 .search-container {
@@ -53,15 +82,16 @@ input[type="text"] {
     flex: 1;
     padding: 12px 14px;
     border-radius: 12px;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    background: rgba(0, 0, 0, 0.35);
-    color: #ffffff;
+    border: 1px solid var(--border-color);
+    background: var(--input-bg);
+    color: var(--text-primary);
     font-size: 0.95rem;
     outline: none;
+    transition: background 0.4s ease, color 0.4s ease, border-color 0.4s ease;
 }
 
 input[type="text"]::placeholder {
-    color: rgba(255, 255, 255, 0.45);
+    color: var(--text-secondary);
 }
 
 button {
@@ -72,7 +102,7 @@ button {
     color: #ffffff;
     font-weight: 600;
     cursor: pointer;
-    transition: background 0.2s ease;
+    transition: background 0.2s ease, transform 0.1s ease;
 }
 
 button:active {
@@ -98,15 +128,15 @@ audio {
     align-items: center;
     gap: 12px;
     padding: 10px;
-    background: rgba(0, 0, 0, 0.25);
-    border: 1px solid rgba(255, 255, 255, 0.05);
+    background: var(--track-bg);
+    border: 1px solid var(--border-color);
     border-radius: 12px;
     cursor: pointer;
-    transition: background 0.2s ease;
+    transition: background 0.2s ease, border-color 0.4s ease;
 }
 
 .track-item:hover {
-    background: rgba(255, 255, 255, 0.08);
+    background: var(--track-hover);
 }
 
 .list-art {
@@ -129,11 +159,12 @@ audio {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    color: var(--text-primary);
 }
 
 .track-info span {
     font-size: 0.8rem;
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--text-secondary);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -144,6 +175,7 @@ audio {
     font-size: 0.75rem;
     background: rgba(45, 172, 252, 0.25);
     border: 1px solid rgba(45, 172, 252, 0.4);
+    color: var(--text-primary);
     flex-shrink: 0;
 }
 
@@ -152,53 +184,31 @@ audio {
     font-size: 0.75rem;
     background: rgba(255, 60, 60, 0.2);
     border: 1px solid rgba(255, 60, 60, 0.4);
+    color: var(--text-primary);
     flex-shrink: 0;
 }
 
 .status-msg {
     text-align: center;
     font-size: 0.85rem;
-    color: rgba(255, 255, 255, 0.6);
+    color: var(--text-secondary);
     margin: 10px 0;
 }
-             
-/* Paste this at the bottom of your style.css file */
-:root {
-    --bg-main: #0f1117;
-    --card-bg: rgba(255, 255, 255, 0.05);
-    --text-primary: #ffffff;
-    --text-secondary: #94a3b8;
-    --accent: #2ecc71;
-}
 
-[data-theme="light"] {
-    --bg-main: #f8fafc;
-    --card-bg: rgba(0, 0, 0, 0.04);
-    --text-primary: #0f172a;
-    --text-secondary: #64748b;
-    --accent: #10b981;
-}
-
-body {
-    background-color: var(--bg-main);
-    color: var(--text-primary);
-    transition: background-color 0.4s cubic-bezier(0.4, 0, 0.2, 1),
-                color 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
+/* Theme Toggle Button & Animation */
 .theme-toggle-btn {
     position: relative;
     width: 44px;
     height: 44px;
     border-radius: 50%;
-    border: 1px solid rgba(255, 255, 255, 0.15);
-    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    background: var(--panel-bg);
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: center;
     backdrop-filter: blur(8px);
-    transition: transform 0.2s ease, border-color 0.3s ease;
+    transition: transform 0.2s ease, border-color 0.4s ease, background 0.4s ease;
 }
 
 .theme-toggle-btn:hover {

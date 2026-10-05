@@ -25,9 +25,27 @@ window.onYouTubeIframeAPIReady = function() {
         height: '200',
         width: '100%',
         videoId: '',
-        playerVars: { 'autoplay': 1, 'controls': 1 }
+        playerVars: { 'autoplay': 1, 'controls': 1 },
+        events: {
+            'onStateChange': onPlayerStateChange
+        }
     });
 };
+
+// Track current active index for playlist progression
+let currentPlaylistIndex = -1;
+let activePlaylistSource = [];
+
+function onPlayerStateChange(event) {
+    // When a video finishes playing (State 0), automatically play the next song in the playlist
+    if (event.data === YT.PlayerState.ENDED) {
+        if (activePlaylistSource.length > 0 && currentPlaylistIndex !== -1 && currentPlaylistIndex < activePlaylistSource.length - 1) {
+            currentPlaylistIndex++;
+            const nextSong = activePlaylistSource[currentPlaylistIndex];
+            playYouTubeVideo(nextSong.stream_url, currentPlaylistIndex, true);
+        }
+    }
+}
 
 // Check local session state
 const savedUser = localStorage.getItem('moosik_active_user');
@@ -169,29 +187,39 @@ function displayTracks(tracks, container) {
 function playYouTubeVideo(videoId, index = -1, isFavorite = false) {
     playerContainer.style.display = "block";
     
-    let playlistString = "";
-    
-    // If playing from favorites, queue up the rest of the favorites as a YouTube playlist
-    if (isFavorite && index !== -1 && index < cloudFavorites.length - 1) {
-        const upcomingSongs = cloudFavorites.slice(index + 1).map(song => song.stream_url);
-        playlistString = `&playlist=${upcomingSongs.join(',')}`;
+    // Track playlist metadata for next/previous handling
+    if (isFavorite && index !== -1) {
+        currentPlaylistIndex = index;
+        activePlaylistSource = cloudFavorites;
+    } else {
+        currentPlaylistIndex = -1;
+        activePlaylistSource = [];
     }
 
-    playerContainer.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-            <span style="font-size: 0.9rem; font-weight: bold; color: var(--text-primary);">Now Playing</span>
-        </div>
-        <div style="position: relative; overflow: hidden; height: 200px; border-radius: 12px; background: #000;">
-            <iframe 
-                id="youtubePlayer"
-                style="width: 100%; height: 200px;"
-                src="https://www.youtube.com/embed/${videoId}?autoplay=1${playlistString}" 
-                frameborder="0" 
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                allowfullscreen>
-            </iframe>
-        </div>
-    `;
+    // If the YouTube player object is already initialized, load the video directly without reloading the iframe iframe wrapper
+    if (ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
+        ytPlayer.loadVideoById(videoId);
+    } else {
+        // Fallback initial load if player isn't ready yet
+        playerContainer.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                <span style="font-size: 0.9rem; font-weight: bold; color: var(--text-primary);">Now Playing</span>
+            </div>
+            <div style="position: relative; overflow: hidden; height: 200px; border-radius: 12px; background: #000;">
+                <div id="youtubePlayer"></div>
+            </div>
+        `;
+        
+        ytPlayer = new YT.Player('youtubePlayer', {
+            height: '200',
+            width: '100%',
+            videoId: videoId,
+            playerVars: { 'autoplay': 1, 'controls': 1 },
+            events: {
+                'onStateChange': onPlayerStateChange
+            }
+        });
+    }
 }
 
 async function toggleFavorite(songData, buttonElement) {

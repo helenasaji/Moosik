@@ -292,11 +292,20 @@ const savedTheme = localStorage.getItem('moosik_theme') ||
 
 document.documentElement.setAttribute('data-theme', savedTheme);
 
-themeToggleBtn.addEventListener('click', () => {
-    const currentTheme = document.documentElement.getAttribute('data-theme');
-    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
-    
+const themeCheckbox = document.getElementById('themeCheckbox');
+
+// Check saved theme or system preference
+const savedTheme = localStorage.getItem('moosik_theme') || 
+    (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+
+document.documentElement.setAttribute('data-theme', savedTheme);
+// Sync the checkbox visual state with the loaded theme
+themeCheckbox.checked = savedTheme === 'light'; 
+
+themeCheckbox.addEventListener('change', () => {
+    const newTheme = themeCheckbox.checked ? 'light' : 'dark';
     document.documentElement.setAttribute('data-theme', newTheme);
     localStorage.setItem('moosik_theme', newTheme);
 });
+
 

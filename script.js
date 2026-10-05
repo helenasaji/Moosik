@@ -18,7 +18,6 @@ const playerContainer = document.getElementById('playerContainer');
 let currentUser = "";
 let cloudFavorites = [];
 let ytPlayer = null;
-let isMp3Mode = false;
 
 // YouTube API Callback
 window.onYouTubeIframeAPIReady = function() {
@@ -57,13 +56,11 @@ switchUserBtn.addEventListener('click', () => {
 });
 
 async function loginUser(name) {
-    // Force the database to use lowercase internally so all casing variations match exactly
     currentUser = name.toLowerCase(); 
     
     welcomeScreen.style.display = "none";
     mainApp.style.display = "block";
     
-    // Use the originally typed name just for the visual greeting on screen
     greetingText.textContent = `${name}'s Moosik`; 
     
     await fetchCloudFavorites();
@@ -102,7 +99,6 @@ async function fetchYouTubeTracks(query) {
         const res = await fetch(`/api/search?q=${encodeURIComponent(query)}`);
         const data = await res.json();
         
-        // This will print the exact Google Cloud error on your screen if the key is blocked!
         if (data.error) {
             resultsList.innerHTML = `<div class="status-msg" style="color:#ff6b6b;">Error: ${data.error.message || data.error}</div>`;
             return;
@@ -173,95 +169,29 @@ function displayTracks(tracks, container) {
 function playYouTubeVideo(videoId, index = -1, isFavorite = false) {
     playerContainer.style.display = "block";
     
-    playerContainer.innerHTML = `
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <span style="font-size: 0.9rem; font-weight: bold; color: var(--text-primary);">Now Playing</span>
-            <button id="modeToggleBtn" style="padding: 6px 12px; font-size: 0.75rem; background: var(--panel-bg); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 8px; cursor: pointer;">
-                Switch to MP3 Mode
-            </button>
-        </div>
-        
-        <div id="audioWrapper" style="display: none; text-align: center; padding: 15px; background: var(--track-bg); border-radius: 12px 12px 0 0; border: 1px solid var(--border-color); border-bottom: none;">
-           <div style="font-size: 2rem; margin-bottom: 5px;">🎵</div>
-           <div style="color: var(--text-primary); font-weight: 600;" id="mp3Title">Audio Playing</div>
-        </div>
+    let playlistString = "";
+    
+    // If playing from favorites, queue up the rest of the favorites as a YouTube playlist
+    if (isFavorite && index !== -1 && index < cloudFavorites.length - 1) {
+        const upcomingSongs = cloudFavorites.slice(index + 1).map(song => song.stream_url);
+        playlistString = `&playlist=${upcomingSongs.join(',')}`;
+    }
 
-        <div id="videoWrapper" style="position: relative; overflow: hidden; height: 200px; border-radius: 12px; transition: height 0.3s ease; background: #000;">
+    playerContainer.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 0.9rem; font-weight: bold; color: var(--text-primary);">Now Playing</span>
+        </div>
+        <div style="position: relative; overflow: hidden; height: 200px; border-radius: 12px; background: #000;">
             <iframe 
                 id="youtubePlayer"
-                style="position: absolute; bottom: 0; left: 0; width: 100%; height: 200px;"
-                src="https://www.youtube.com/embed/${videoId}?autoplay=1" 
+                style="width: 100%; height: 200px;"
+                src="https://www.youtube.com/embed/${videoId}?autoplay=1${playlistString}" 
                 frameborder="0" 
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
                 allowfullscreen>
             </iframe>
         </div>
     `;
-
-    updatePlayerMode();
-
-    document.getElementById('modeToggleBtn').addEventListener('click', () => {
-        isMp3Mode = !isMp3Mode;
-        updatePlayerMode();
-    });
-
-    // --- OS Media Controls (Notification Panel & Lock Screen) ---
-    if ('mediaSession' in navigator && isFavorite && index !== -1) {
-        const currentSong = cloudFavorites[index];
-        
-        const mp3Title = document.getElementById('mp3Title');
-        if (mp3Title) mp3Title.textContent = currentSong.title;
-
-        navigator.mediaSession.metadata = new MediaMetadata({
-            title: currentSong.title,
-            artist: currentSong.artist,
-            artwork: [
-                { src: currentSong.artwork, sizes: '512x512', type: 'image/jpeg' }
-            ]
-        });
-
-        if (index < cloudFavorites.length - 1) {
-            navigator.mediaSession.setActionHandler('nexttrack', () => {
-                const nextSong = cloudFavorites[index + 1];
-                playYouTubeVideo(nextSong.stream_url, index + 1, true);
-            });
-        } else {
-            navigator.mediaSession.setActionHandler('nexttrack', null);
-        }
-
-        if (index > 0) {
-            navigator.mediaSession.setActionHandler('previoustrack', () => {
-                const prevSong = cloudFavorites[index - 1];
-                playYouTubeVideo(prevSong.stream_url, index - 1, true);
-            });
-        } else {
-            navigator.mediaSession.setActionHandler('previoustrack', null);
-        }
-    } else if ('mediaSession' in navigator) {
-        navigator.mediaSession.metadata = null;
-        navigator.mediaSession.setActionHandler('nexttrack', null);
-        navigator.mediaSession.setActionHandler('previoustrack', null);
-    }
-}
-
-function updatePlayerMode() {
-    const videoWrapper = document.getElementById('videoWrapper');
-    const audioWrapper = document.getElementById('audioWrapper');
-    const modeBtn = document.getElementById('modeToggleBtn');
-
-    if (!videoWrapper || !audioWrapper || !modeBtn) return;
-
-    if (isMp3Mode) {
-        audioWrapper.style.display = "block";
-        videoWrapper.style.height = "45px";
-        videoWrapper.style.borderRadius = "0 0 12px 12px";
-        modeBtn.textContent = "Switch to Video Mode";
-    } else {
-        audioWrapper.style.display = "none";
-        videoWrapper.style.height = "200px";
-        videoWrapper.style.borderRadius = "12px";
-        modeBtn.textContent = "Switch to MP3 Mode";
-    }
 }
 
 async function toggleFavorite(songData, buttonElement) {

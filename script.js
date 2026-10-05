@@ -174,73 +174,67 @@ function playYouTubeVideo(videoId, index = -1, isFavorite = false) {
     playerContainer.style.display = "block";
     
     let playlistString = "";
-    
-    // If we clicked a favorite, grab all the songs AFTER it to create a native playlist
     if (isFavorite && index !== -1 && index < cloudFavorites.length - 1) {
         const upcomingSongs = cloudFavorites.slice(index + 1).map(song => song.stream_url);
         playlistString = `&playlist=${upcomingSongs.join(',')}`;
     }
 
-    // Inject the player structure with a toggle button and both mode wrappers
+    // Notice the updated styling for audioWrapper and videoWrapper
     playerContainer.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
             <span style="font-size: 0.9rem; font-weight: bold; color: var(--text-primary);">Now Playing</span>
-            <button id="modeToggleBtn" style="padding: 6px 12px; font-size: 0.75rem; background: var(--panel-bg); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 8px;">
+            <button id="modeToggleBtn" style="padding: 6px 12px; font-size: 0.75rem; background: var(--panel-bg); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 8px; cursor: pointer;">
                 Switch to MP3 Mode
             </button>
         </div>
         
-        <div id="videoWrapper">
+        <div id="audioWrapper" style="display: none; text-align: center; padding: 15px; background: var(--track-bg); border-radius: 12px 12px 0 0; border: 1px solid var(--border-color); border-bottom: none;">
+           <div style="font-size: 2rem; margin-bottom: 5px;">🎵</div>
+           <div style="color: var(--text-primary); font-weight: 600;">Audio Playing</div>
+        </div>
+
+        <div id="videoWrapper" style="position: relative; overflow: hidden; height: 200px; border-radius: 12px; transition: height 0.3s ease; background: #000;">
             <iframe 
                 id="youtubePlayer"
-                width="100%" 
-                height="200" 
+                style="position: absolute; bottom: 0; left: 0; width: 100%; height: 200px;"
                 src="https://www.youtube.com/embed/${videoId}?autoplay=1${playlistString}" 
                 frameborder="0" 
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
                 allowfullscreen>
             </iframe>
         </div>
-        
-        <div id="audioWrapper" style="display: none; text-align: center; padding: 30px 15px; background: var(--track-bg); border-radius: 12px; border: 1px solid var(--border-color);">
-           <div style="font-size: 2rem; margin-bottom: 10px;">🎵</div>
-           <div style="color: var(--text-primary); font-weight: 600;">Audio Playing</div>
-           <div class="status-msg" style="margin-top: 5px;">Streaming from YouTube</div>
-        </div>
     `;
 
-    // Apply the current mode state visually
     updatePlayerMode();
 
-    // Listen for clicks on the toggle button
     document.getElementById('modeToggleBtn').addEventListener('click', () => {
-        isMp3Mode = !isMp3Mode; // Flip the mode state
-        updatePlayerMode(); // Update the UI
+        isMp3Mode = !isMp3Mode;
+        updatePlayerMode();
     });
 }
 
-// Helper function to switch visuals without interrupting playback
 function updatePlayerMode() {
     const videoWrapper = document.getElementById('videoWrapper');
     const audioWrapper = document.getElementById('audioWrapper');
     const modeBtn = document.getElementById('modeToggleBtn');
-    const iframe = document.getElementById('youtubePlayer');
 
     if (!videoWrapper || !audioWrapper || !modeBtn) return;
 
     if (isMp3Mode) {
-        // Hide video iframe completely, show MP3 dummy UI
-        videoWrapper.style.position = "absolute";
-        videoWrapper.style.visibility = "hidden";
-        iframe.style.height = "0";
+        // Show the MP3 UI graphic on top
         audioWrapper.style.display = "block";
+        // Crop the video frame to exactly 45px to only show the control bar
+        videoWrapper.style.height = "45px";
+        // Flatten the top corners so it connects seamlessly to the audio UI above it
+        videoWrapper.style.borderRadius = "0 0 12px 12px";
         modeBtn.textContent = "Switch to Video Mode";
     } else {
-        // Show video iframe, hide MP3 dummy UI
-        videoWrapper.style.position = "relative";
-        videoWrapper.style.visibility = "visible";
-        iframe.style.height = "200px";
+        // Hide MP3 UI
         audioWrapper.style.display = "none";
+        // Restore full video height
+        videoWrapper.style.height = "200px";
+        // Restore rounded corners all around
+        videoWrapper.style.borderRadius = "12px";
         modeBtn.textContent = "Switch to MP3 Mode";
     }
 }

@@ -298,8 +298,24 @@ document.documentElement.setAttribute('data-theme', savedTheme);
 if (themeCheckbox) {
     themeCheckbox.checked = savedTheme === 'light'; 
 
-    themeCheckbox.addEventListener('change', () => {
-        const newTheme = themeCheckbox.checked ? 'light' : 'dark';
+    const themeBulb = document.getElementById('themeBulb');
+const savedTheme = localStorage.getItem('moosik_theme') || 
+    (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+
+document.documentElement.setAttribute('data-theme', savedTheme);
+
+if (themeBulb) {
+    themeBulb.addEventListener('click', () => {
+        // Add a physical swinging effect on click
+        themeBulb.style.transform = "rotate(15deg)";
+        setTimeout(() => {
+            themeBulb.style.transform = "rotate(0deg)";
+        }, 300);
+
+        // Toggle the theme
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        
         document.documentElement.setAttribute('data-theme', newTheme);
         localStorage.setItem('moosik_theme', newTheme);
     });

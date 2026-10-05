@@ -286,11 +286,6 @@ function escapeHtml(str) {
     div.textContent = str;
     return div.innerHTML;
 }
-const themeToggleBtn = document.getElementById('themeToggle');
-const savedTheme = localStorage.getItem('moosik_theme') || 
-    (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-
-document.documentElement.setAttribute('data-theme', savedTheme);
 
 const themeCheckbox = document.getElementById('themeCheckbox');
 
@@ -300,12 +295,12 @@ const savedTheme = localStorage.getItem('moosik_theme') ||
 
 document.documentElement.setAttribute('data-theme', savedTheme);
 // Sync the checkbox visual state with the loaded theme
-themeCheckbox.checked = savedTheme === 'light'; 
+if (themeCheckbox) {
+    themeCheckbox.checked = savedTheme === 'light'; 
 
-themeCheckbox.addEventListener('change', () => {
-    const newTheme = themeCheckbox.checked ? 'light' : 'dark';
-    document.documentElement.setAttribute('data-theme', newTheme);
-    localStorage.setItem('moosik_theme', newTheme);
-});
-
-
+    themeCheckbox.addEventListener('change', () => {
+        const newTheme = themeCheckbox.checked ? 'light' : 'dark';
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('moosik_theme', newTheme);
+    });
+}

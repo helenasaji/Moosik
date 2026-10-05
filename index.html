@@ -1,61 +1,60 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Moosik - YouTube Music Style</title>
-    <!-- Stable Supabase CDN -->
+    <title>Moosik</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- External APIs -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <link rel="stylesheet" href="style.css?v=10">
+    <script src="https://www.youtube.com/iframe_api"></script>
 </head>
 <body>
-    <!-- SCREEN 1: Name Gate -->
+    
+    <!-- 1. The Hanging Bulb Theme Toggle (Hangs outside the panels) -->
+    <div class="hanging-bulb-container" id="themeBulb" aria-label="Toggle Theme">
+        <div class="wire"></div>
+        <div class="bulb-base"></div>
+        <div class="bulb"></div>
+    </div>
+
+    <!-- 2. Welcome Screen -->
     <div id="welcomeScreen" class="glass-panel">
-        <h1>Moosik</h1>
-        <p style="text-align: center; color: rgba(255,255,255,0.7); font-size: 0.9rem; margin-top: -8px; margin-bottom: 18px;">
-            Enter your name to load your cloud library
-        </p>
+        <h1 style="text-align: center;">Welcome to Moosik</h1>
         <div class="search-container">
-            <input type="text" id="userNameInput" placeholder="Enter your full name...">
-            <button type="button" id="enterAppBtn">Enter</button>
+            <input type="text" id="userNameInput" placeholder="Enter your name to begin">
+            <button id="enterAppBtn">Enter</button>
         </div>
     </div>
 
-    <!-- SCREEN 2: YouTube Music Style App -->
-    <div id="mainApp" class="glass-panel" style="display: none; max-width: 600px;">
+    <!-- 3. Main App Screen -->
+    <div id="mainApp" class="glass-panel" style="display: none;">
+        
+        <!-- Header -->
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
-            <h1 id="greetingText" style="margin: 0; font-size: 1.4rem; text-align: left;">Moosik</h1>
-            <button type="button" id="switchUserBtn" style="padding: 6px 12px; font-size: 0.75rem; background: rgba(255,255,255,0.1);">Switch User</button>
+            <h1 style="margin: 0;" id="greetingText">Moosik</h1>
+            <button id="switchUserBtn">Switch User</button>
         </div>
-
+        
         <!-- Search Bar -->
         <div class="search-container">
-            <input type="text" id="searchInput" placeholder="Search songs, artists, Malayalam hits...">
-            <button type="button" id="searchBtn">Search</button>
-        <div class="hanging-bulb-container" id="themeBulb" aria-label="Toggle Theme">
-    <div class="wire"></div>
-    <div class="bulb-base"></div>
-    <div class="bulb"></div>
-</div>
-
-
-        <!-- Embedded YouTube Player Container -->
-        <div id="playerContainer" style="margin: 16px 0; border-radius: 12px; overflow: hidden; background: #000; display: none;">
-            <div id="youtubePlayer"></div>
+            <input type="text" id="searchInput" placeholder="Search songs, artists, Malayalam...">
+            <button id="searchBtn">Search</button>
         </div>
 
-        <!-- Results List -->
+        <!-- YouTube Player -->
+        <div id="playerContainer" style="display: none;"></div>
+
+        <!-- Search Results -->
         <div id="resultsList" class="results-container"></div>
-
-        <!-- Cloud Favorites Section -->
-        <div class="favorites-section">
-            <h2 style="font-size: 1.05rem; margin: 24px 0 12px 0; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 16px;">❤ Cloud Favorites</h2>
-            <div id="favoritesList" class="results-container"></div>
-        </div>
+        
+        <!-- Favorites Section -->
+        <h2 style="margin-top: 24px; margin-bottom: 12px; font-size: 1.2rem; color: var(--text-primary);">My Favorites</h2>
+        <div id="favoritesList" class="results-container"></div>
+        
     </div>
 
-    <!-- YouTube IFrame API -->
-    <script src="https://www.youtube.com/iframe_api"></script>
-    <script src="script.js?v=10"></script>
+    <script src="script.js"></script>
 </body>
 </html>

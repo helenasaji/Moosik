@@ -286,3 +286,17 @@ function escapeHtml(str) {
     div.textContent = str;
     return div.innerHTML;
 }
+const themeToggleBtn = document.getElementById('themeToggle');
+const savedTheme = localStorage.getItem('moosik_theme') || 
+    (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+
+document.documentElement.setAttribute('data-theme', savedTheme);
+
+themeToggleBtn.addEventListener('click', () => {
+    const currentTheme = document.documentElement.getAttribute('data-theme');
+    const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+    
+    document.documentElement.setAttribute('data-theme', newTheme);
+    localStorage.setItem('moosik_theme', newTheme);
+});
+

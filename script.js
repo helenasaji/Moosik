@@ -173,9 +173,6 @@ function displayTracks(tracks, container) {
 function playYouTubeVideo(videoId, index = -1, isFavorite = false) {
     playerContainer.style.display = "block";
     
-    // We completely removed the buggy "playlistString" logic here 
-    // so it will only ever play the exact song you clicked.
-
     playerContainer.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
             <span style="font-size: 0.9rem; font-weight: bold; color: var(--text-primary);">Now Playing</span>
@@ -186,7 +183,7 @@ function playYouTubeVideo(videoId, index = -1, isFavorite = false) {
         
         <div id="audioWrapper" style="display: none; text-align: center; padding: 15px; background: var(--track-bg); border-radius: 12px 12px 0 0; border: 1px solid var(--border-color); border-bottom: none;">
            <div style="font-size: 2rem; margin-bottom: 5px;">🎵</div>
-           <div style="color: var(--text-primary); font-weight: 600;">Audio Playing</div>
+           <div style="color: var(--text-primary); font-weight: 600;" id="mp3Title">Audio Playing</div>
         </div>
 
         <div id="videoWrapper" style="position: relative; overflow: hidden; height: 200px; border-radius: 12px; transition: height 0.3s ease; background: #000;">
@@ -207,6 +204,44 @@ function playYouTubeVideo(videoId, index = -1, isFavorite = false) {
         isMp3Mode = !isMp3Mode;
         updatePlayerMode();
     });
+
+    // --- OS Media Controls (Notification Panel & Lock Screen) ---
+    if ('mediaSession' in navigator && isFavorite && index !== -1) {
+        const currentSong = cloudFavorites[index];
+        
+        const mp3Title = document.getElementById('mp3Title');
+        if (mp3Title) mp3Title.textContent = currentSong.title;
+
+        navigator.mediaSession.metadata = new MediaMetadata({
+            title: currentSong.title,
+            artist: currentSong.artist,
+            artwork: [
+                { src: currentSong.artwork, sizes: '512x512', type: 'image/jpeg' }
+            ]
+        });
+
+        if (index < cloudFavorites.length - 1) {
+            navigator.mediaSession.setActionHandler('nexttrack', () => {
+                const nextSong = cloudFavorites[index + 1];
+                playYouTubeVideo(nextSong.stream_url, index + 1, true);
+            });
+        } else {
+            navigator.mediaSession.setActionHandler('nexttrack', null);
+        }
+
+        if (index > 0) {
+            navigator.mediaSession.setActionHandler('previoustrack', () => {
+                const prevSong = cloudFavorites[index - 1];
+                playYouTubeVideo(prevSong.stream_url, index - 1, true);
+            });
+        } else {
+            navigator.mediaSession.setActionHandler('previoustrack', null);
+        }
+    } else if ('mediaSession' in navigator) {
+        navigator.mediaSession.metadata = null;
+        navigator.mediaSession.setActionHandler('nexttrack', null);
+        navigator.mediaSession.setActionHandler('previoustrack', null);
+    }
 }
 
 function updatePlayerMode() {
@@ -217,19 +252,13 @@ function updatePlayerMode() {
     if (!videoWrapper || !audioWrapper || !modeBtn) return;
 
     if (isMp3Mode) {
-        // Show the MP3 UI graphic on top
         audioWrapper.style.display = "block";
-        // Crop the video frame to exactly 45px to only show the control bar
         videoWrapper.style.height = "45px";
-        // Flatten the top corners so it connects seamlessly to the audio UI above it
         videoWrapper.style.borderRadius = "0 0 12px 12px";
         modeBtn.textContent = "Switch to Video Mode";
     } else {
-        // Hide MP3 UI
         audioWrapper.style.display = "none";
-        // Restore full video height
         videoWrapper.style.height = "200px";
-        // Restore rounded corners all around
         videoWrapper.style.borderRadius = "12px";
         modeBtn.textContent = "Switch to MP3 Mode";
     }
@@ -239,7 +268,6 @@ async function toggleFavorite(songData, buttonElement) {
     const isAlreadySaved = cloudFavorites.some(fav => fav.track_id === songData.track_id);
 
     if (!isAlreadySaved) {
-        // Step 1: It is NOT saved yet, so we Insert/Save it
         const { error } = await supabaseClient.from('user_favorites').insert([songData]);
         
         if (error) {
@@ -248,18 +276,16 @@ async function toggleFavorite(songData, buttonElement) {
             return;
         }
 
-        // Make button green to indicate it is saved
         buttonElement.textContent = "Saved ✓";
         buttonElement.style.background = "rgba(46, 204, 113, 0.4)";
         buttonElement.style.borderColor = "rgba(46, 204, 113, 0.6)";
         
     } else {
-        // Step 2: It IS already saved, so we Delete/Remove it
         const { error } = await supabaseClient
             .from('user_favorites')
             .delete()
             .eq('username', songData.username)
-            .eq('track_id', songData.track_id); // Deletes only this specific track for this user
+            .eq('track_id', songData.track_id);
             
         if (error) {
             console.error("Supabase Delete Error Details:", error);
@@ -267,13 +293,11 @@ async function toggleFavorite(songData, buttonElement) {
             return;
         }
 
-        // Reset button back to the default "Save" state
         buttonElement.textContent = "Save";
         buttonElement.style.background = "";
         buttonElement.style.borderColor = "";
     }
     
-    // Refresh the cloud favorites list after either action so the sidebar updates instantly
     await fetchCloudFavorites();
 }
 
@@ -296,7 +320,6 @@ function renderFavorites() {
             <button type="button" class="remove-btn">✕</button>
         `;
 
-        // We pass the index and 'true' here to let the player know this is from the favorites list
         favDiv.querySelector('.list-art').addEventListener('click', () => playYouTubeVideo(fav.stream_url, index, true));
         favDiv.querySelector('.track-info').addEventListener('click', () => playYouTubeVideo(fav.stream_url, index, true));
 
@@ -335,13 +358,11 @@ document.documentElement.setAttribute('data-theme', savedTheme);
 
 if (themeBulb) {
     themeBulb.addEventListener('click', () => {
-        // Add a physical swinging effect on click
         themeBulb.style.transform = "rotate(15deg)";
         setTimeout(() => {
             themeBulb.style.transform = "rotate(0deg)";
         }, 300);
 
-        // Toggle the theme
         const currentTheme = document.documentElement.getAttribute('data-theme');
         const newTheme = currentTheme === 'light' ? 'dark' : 'light';
         

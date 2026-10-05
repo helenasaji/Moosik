@@ -287,18 +287,8 @@ function escapeHtml(str) {
     return div.innerHTML;
 }
 
-const themeCheckbox = document.getElementById('themeCheckbox');
-
-// Check saved theme or system preference
-const savedTheme = localStorage.getItem('moosik_theme') || 
-    (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-
-document.documentElement.setAttribute('data-theme', savedTheme);
-// Sync the checkbox visual state with the loaded theme
-if (themeCheckbox) {
-    themeCheckbox.checked = savedTheme === 'light'; 
-
-    const themeBulb = document.getElementById('themeBulb');
+// Theme Bulb Logic
+const themeBulb = document.getElementById('themeBulb');
 const savedTheme = localStorage.getItem('moosik_theme') || 
     (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
 

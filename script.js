@@ -173,13 +173,9 @@ function displayTracks(tracks, container) {
 function playYouTubeVideo(videoId, index = -1, isFavorite = false) {
     playerContainer.style.display = "block";
     
-    let playlistString = "";
-    if (isFavorite && index !== -1 && index < cloudFavorites.length - 1) {
-        const upcomingSongs = cloudFavorites.slice(index + 1).map(song => song.stream_url);
-        playlistString = `&playlist=${upcomingSongs.join(',')}`;
-    }
+    // We completely removed the buggy "playlistString" logic here 
+    // so it will only ever play the exact song you clicked.
 
-    // Notice the updated styling for audioWrapper and videoWrapper
     playerContainer.innerHTML = `
         <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
             <span style="font-size: 0.9rem; font-weight: bold; color: var(--text-primary);">Now Playing</span>
@@ -197,7 +193,7 @@ function playYouTubeVideo(videoId, index = -1, isFavorite = false) {
             <iframe 
                 id="youtubePlayer"
                 style="position: absolute; bottom: 0; left: 0; width: 100%; height: 200px;"
-                src="https://www.youtube.com/embed/${videoId}?autoplay=1${playlistString}" 
+                src="https://www.youtube.com/embed/${videoId}?autoplay=1" 
                 frameborder="0" 
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
                 allowfullscreen>

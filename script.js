@@ -19,6 +19,10 @@ let currentUser = "";
 let cloudFavorites = [];
 let ytPlayer = null;
 
+// Track current active index for custom JS playlist progression
+let currentPlaylistIndex = -1;
+let activePlaylistSource = [];
+
 // YouTube API Callback
 window.onYouTubeIframeAPIReady = function() {
     ytPlayer = new YT.Player('youtubePlayer', {
@@ -31,10 +35,6 @@ window.onYouTubeIframeAPIReady = function() {
         }
     });
 };
-
-// Track current active index for playlist progression
-let currentPlaylistIndex = -1;
-let activePlaylistSource = [];
 
 function onPlayerStateChange(event) {
     // When a video finishes playing (State 0), automatically play the next song in the playlist
@@ -187,7 +187,7 @@ function displayTracks(tracks, container) {
 function playYouTubeVideo(videoId, index = -1, isFavorite = false) {
     playerContainer.style.display = "block";
     
-    // Track playlist metadata for next/previous handling
+    // Track playlist metadata for JavaScript-based auto-play
     if (isFavorite && index !== -1) {
         currentPlaylistIndex = index;
         activePlaylistSource = cloudFavorites;
@@ -196,11 +196,11 @@ function playYouTubeVideo(videoId, index = -1, isFavorite = false) {
         activePlaylistSource = [];
     }
 
-    // If the YouTube player object is already initialized, load the video directly without reloading the iframe iframe wrapper
+    // Load the video natively through the API to prevent iframe reloading and glitches
     if (ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
         ytPlayer.loadVideoById(videoId);
     } else {
-        // Fallback initial load if player isn't ready yet
+        // Initial setup structure
         playerContainer.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
                 <span style="font-size: 0.9rem; font-weight: bold; color: var(--text-primary);">Now Playing</span>

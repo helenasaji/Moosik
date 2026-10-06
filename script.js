@@ -175,4 +175,165 @@ function playYouTubeVideo(videoId, index = -1, isFavorite = false) {
         <div style="position: relative; overflow: hidden; height: 200px; border-radius: 12px; background: #000;">
             <iframe 
                 id="youtubePlayer"
-                style="position: absolute; bottom: 0; left: 0; width: 100
+                style="position: absolute; bottom: 0; left: 0; width: 100%; height: 200px;"
+                src="https://www.youtube.com/embed/${videoId}?autoplay=1" 
+                frameborder="0" 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                allowfullscreen>
+            </iframe>
+        </div>
+    `;
+
+    // Hook up the buttons to actually skip tracks
+    if (isPlaylist) {
+        const prevBtn = document.getElementById('uiPrevBtn');
+        const nextBtn = document.getElementById('uiNextBtn');
+
+        if (index > 0) {
+            prevBtn.addEventListener('click', () => playYouTubeVideo(cloudFavorites[index - 1].stream_url, index - 1, true));
+        } else {
+            prevBtn.style.opacity = "0.3";
+            prevBtn.style.cursor = "default";
+        }
+
+        if (index < cloudFavorites.length - 1) {
+            nextBtn.addEventListener('click', () => playYouTubeVideo(cloudFavorites[index + 1].stream_url, index + 1, true));
+        } else {
+            nextBtn.style.opacity = "0.3";
+            nextBtn.style.cursor = "default";
+        }
+
+        // Restore Android Notification Lock Screen controls natively via JS
+        if ('mediaSession' in navigator) {
+            const currentSong = cloudFavorites[index];
+            navigator.mediaSession.metadata = new MediaMetadata({
+                title: currentSong.title,
+                artist: currentSong.artist,
+                artwork: [{ src: currentSong.artwork, sizes: '512x512', type: 'image/jpeg' }]
+            });
+
+            if (index < cloudFavorites.length - 1) {
+                navigator.mediaSession.setActionHandler('nexttrack', () => {
+                    playYouTubeVideo(cloudFavorites[index + 1].stream_url, index + 1, true);
+                });
+            } else {
+                navigator.mediaSession.setActionHandler('nexttrack', null);
+            }
+
+            if (index > 0) {
+                navigator.mediaSession.setActionHandler('previoustrack', () => {
+                    playYouTubeVideo(cloudFavorites[index - 1].stream_url, index - 1, true);
+                });
+            } else {
+                navigator.mediaSession.setActionHandler('previoustrack', null);
+            }
+        }
+    }
+}
+
+async function toggleFavorite(songData, buttonElement) {
+    const isAlreadySaved = cloudFavorites.some(fav => fav.track_id === songData.track_id);
+
+    if (!isAlreadySaved) {
+        const { error } = await supabaseClient.from('user_favorites').insert([songData]);
+        
+        if (error) {
+            console.error("Supabase Save Error Details:", error);
+            alert("Could not save: " + error.message);
+            return;
+        }
+
+        buttonElement.textContent = "Saved ✓";
+        buttonElement.style.background = "rgba(46, 204, 113, 0.4)";
+        buttonElement.style.borderColor = "rgba(46, 204, 113, 0.6)";
+        
+    } else {
+        const { error } = await supabaseClient
+            .from('user_favorites')
+            .delete()
+            .eq('username', songData.username)
+            .eq('track_id', songData.track_id);
+            
+        if (error) {
+            console.error("Supabase Delete Error Details:", error);
+            alert("Could not remove: " + error.message);
+            return;
+        }
+
+        buttonElement.textContent = "Save";
+        buttonElement.style.background = "";
+        buttonElement.style.borderColor = "";
+    }
+    
+    await fetchCloudFavorites();
+}
+
+function renderFavorites() {
+    favoritesList.innerHTML = "";
+    if (cloudFavorites.length === 0) {
+        favoritesList.innerHTML = `<div class="status-msg">No cloud favorites yet.</div>`;
+        return;
+    }
+
+    cloudFavorites.forEach((fav, index) => {
+        const favDiv = document.createElement('div');
+        favDiv.className = 'track-item';
+        favDiv.innerHTML = `
+            <img src="${fav.artwork}" alt="Cover" class="list-art">
+            <div class="track-info" style="flex: 1; cursor: pointer;">
+                <strong>${escapeHtml(fav.title)}</strong>
+                <span>${escapeHtml(fav.artist)}</span>
+            </div>
+            <button type="button" class="remove-btn">✕</button>
+        `;
+
+        favDiv.querySelector('.list-art').addEventListener('click', () => playYouTubeVideo(fav.stream_url, index, true));
+        favDiv.querySelector('.track-info').addEventListener('click', () => playYouTubeVideo(fav.stream_url, index, true));
+
+        favDiv.querySelector('.remove-btn').addEventListener('click', async (e) => {
+            e.stopPropagation();
+            const { error } = await supabaseClient
+                .from('user_favorites')
+                .delete()
+                .eq('username', currentUser)
+                .eq('track_id', fav.track_id);
+
+            if (!error) {
+                await fetchCloudFavorites();
+                if (searchInput.value.trim()) {
+                    executeSearch();
+                }
+            }
+        });
+
+        favoritesList.appendChild(favDiv);
+    });
+}
+
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+// Theme Bulb Logic
+const themeBulb = document.getElementById('themeBulb');
+const savedTheme = localStorage.getItem('moosik_theme') || 
+    (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+
+document.documentElement.setAttribute('data-theme', savedTheme);
+
+if (themeBulb) {
+    themeBulb.addEventListener('click', () => {
+        themeBulb.style.transform = "rotate(15deg)";
+        setTimeout(() => {
+            themeBulb.style.transform = "rotate(0deg)";
+        }, 300);
+
+        const currentTheme = document.documentElement.getAttribute('data-theme');
+        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+        
+        document.documentElement.setAttribute('data-theme', newTheme);
+        localStorage.setItem('moosik_theme', newTheme);
+    });
+}

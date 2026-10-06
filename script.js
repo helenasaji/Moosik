@@ -17,35 +17,6 @@ const playerContainer = document.getElementById('playerContainer');
 
 let currentUser = "";
 let cloudFavorites = [];
-let ytPlayer = null;
-
-// Track current active index for custom JS playlist progression
-let currentPlaylistIndex = -1;
-let activePlaylistSource = [];
-
-// YouTube API Callback
-window.onYouTubeIframeAPIReady = function() {
-    ytPlayer = new YT.Player('youtubePlayer', {
-        height: '200',
-        width: '100%',
-        videoId: '',
-        playerVars: { 'autoplay': 1, 'controls': 1 },
-        events: {
-            'onStateChange': onPlayerStateChange
-        }
-    });
-};
-
-function onPlayerStateChange(event) {
-    // When a video finishes playing (State 0), automatically play the next song in the playlist
-    if (event.data === YT.PlayerState.ENDED) {
-        if (activePlaylistSource.length > 0 && currentPlaylistIndex !== -1 && currentPlaylistIndex < activePlaylistSource.length - 1) {
-            currentPlaylistIndex++;
-            const nextSong = activePlaylistSource[currentPlaylistIndex];
-            playYouTubeVideo(nextSong.stream_url, currentPlaylistIndex, true);
-        }
-    }
-}
 
 // Check local session state
 const savedUser = localStorage.getItem('moosik_active_user');
@@ -66,8 +37,8 @@ switchUserBtn.addEventListener('click', () => {
     localStorage.removeItem('moosik_active_user');
     currentUser = "";
     cloudFavorites = [];
-    if (ytPlayer && ytPlayer.stopVideo) ytPlayer.stopVideo();
     playerContainer.style.display = "none";
+    playerContainer.innerHTML = "";
     mainApp.style.display = "none";
     welcomeScreen.style.display = "block";
     userNameInput.value = "";
@@ -186,145 +157,22 @@ function displayTracks(tracks, container) {
 
 function playYouTubeVideo(videoId, index = -1, isFavorite = false) {
     playerContainer.style.display = "block";
+    const isPlaylist = isFavorite && index !== -1;
     
-    // Track playlist metadata for JavaScript-based auto-play
-    if (isFavorite && index !== -1) {
-        currentPlaylistIndex = index;
-        activePlaylistSource = cloudFavorites;
-    } else {
-        currentPlaylistIndex = -1;
-        activePlaylistSource = [];
-    }
-
-    // Load the video natively through the API to prevent iframe reloading and glitches
-    if (ytPlayer && typeof ytPlayer.loadVideoById === 'function') {
-        ytPlayer.loadVideoById(videoId);
-    } else {
-        // Initial setup structure
-        playerContainer.innerHTML = `
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
-                <span style="font-size: 0.9rem; font-weight: bold; color: var(--text-primary);">Now Playing</span>
-            </div>
-            <div style="position: relative; overflow: hidden; height: 200px; border-radius: 12px; background: #000;">
-                <div id="youtubePlayer"></div>
-            </div>
-        `;
-        
-        ytPlayer = new YT.Player('youtubePlayer', {
-            height: '200',
-            width: '100%',
-            videoId: videoId,
-            playerVars: { 'autoplay': 1, 'controls': 1 },
-            events: {
-                'onStateChange': onPlayerStateChange
-            }
-        });
-    }
-}
-
-async function toggleFavorite(songData, buttonElement) {
-    const isAlreadySaved = cloudFavorites.some(fav => fav.track_id === songData.track_id);
-
-    if (!isAlreadySaved) {
-        const { error } = await supabaseClient.from('user_favorites').insert([songData]);
-        
-        if (error) {
-            console.error("Supabase Save Error Details:", error);
-            alert("Could not save: " + error.message);
-            return;
-        }
-
-        buttonElement.textContent = "Saved ✓";
-        buttonElement.style.background = "rgba(46, 204, 113, 0.4)";
-        buttonElement.style.borderColor = "rgba(46, 204, 113, 0.6)";
-        
-    } else {
-        const { error } = await supabaseClient
-            .from('user_favorites')
-            .delete()
-            .eq('username', songData.username)
-            .eq('track_id', songData.track_id);
+    // Inject the iframe AND the custom Next/Prev UI buttons if playing from favorites
+    playerContainer.innerHTML = `
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <span style="font-size: 0.9rem; font-weight: bold; color: var(--text-primary);">Now Playing</span>
             
-        if (error) {
-            console.error("Supabase Delete Error Details:", error);
-            alert("Could not remove: " + error.message);
-            return;
-        }
-
-        buttonElement.textContent = "Save";
-        buttonElement.style.background = "";
-        buttonElement.style.borderColor = "";
-    }
-    
-    await fetchCloudFavorites();
-}
-
-function renderFavorites() {
-    favoritesList.innerHTML = "";
-    if (cloudFavorites.length === 0) {
-        favoritesList.innerHTML = `<div class="status-msg">No cloud favorites yet.</div>`;
-        return;
-    }
-
-    cloudFavorites.forEach((fav, index) => {
-        const favDiv = document.createElement('div');
-        favDiv.className = 'track-item';
-        favDiv.innerHTML = `
-            <img src="${fav.artwork}" alt="Cover" class="list-art">
-            <div class="track-info" style="flex: 1; cursor: pointer;">
-                <strong>${escapeHtml(fav.title)}</strong>
-                <span>${escapeHtml(fav.artist)}</span>
+            ${isPlaylist ? `
+            <div style="display: flex; gap: 8px;">
+                <button id="uiPrevBtn" style="padding: 4px 12px; font-size: 1rem; background: var(--panel-bg); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 6px; cursor: pointer;">⏮</button>
+                <button id="uiNextBtn" style="padding: 4px 12px; font-size: 1rem; background: var(--panel-bg); border: 1px solid var(--border-color); color: var(--text-primary); border-radius: 6px; cursor: pointer;">⏭</button>
             </div>
-            <button type="button" class="remove-btn">✕</button>
-        `;
-
-        favDiv.querySelector('.list-art').addEventListener('click', () => playYouTubeVideo(fav.stream_url, index, true));
-        favDiv.querySelector('.track-info').addEventListener('click', () => playYouTubeVideo(fav.stream_url, index, true));
-
-        favDiv.querySelector('.remove-btn').addEventListener('click', async (e) => {
-            e.stopPropagation();
-            const { error } = await supabaseClient
-                .from('user_favorites')
-                .delete()
-                .eq('username', currentUser)
-                .eq('track_id', fav.track_id);
-
-            if (!error) {
-                await fetchCloudFavorites();
-                if (searchInput.value.trim()) {
-                    executeSearch();
-                }
-            }
-        });
-
-        favoritesList.appendChild(favDiv);
-    });
-}
-
-function escapeHtml(str) {
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-}
-
-// Theme Bulb Logic
-const themeBulb = document.getElementById('themeBulb');
-const savedTheme = localStorage.getItem('moosik_theme') || 
-    (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-
-document.documentElement.setAttribute('data-theme', savedTheme);
-
-if (themeBulb) {
-    themeBulb.addEventListener('click', () => {
-        themeBulb.style.transform = "rotate(15deg)";
-        setTimeout(() => {
-            themeBulb.style.transform = "rotate(0deg)";
-        }, 300);
-
-        const currentTheme = document.documentElement.getAttribute('data-theme');
-        const newTheme = currentTheme === 'light' ? 'dark' : 'light';
+            ` : ''}
+        </div>
         
-        document.documentElement.setAttribute('data-theme', newTheme);
-        localStorage.setItem('moosik_theme', newTheme);
-    });
-}
+        <div style="position: relative; overflow: hidden; height: 200px; border-radius: 12px; background: #000;">
+            <iframe 
+                id="youtubePlayer"
+                style="position: absolute; bottom: 0; left: 0; width: 100

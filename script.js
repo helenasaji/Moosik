@@ -49,12 +49,14 @@ async function loginUser(name) {
     
     welcomeScreen.style.display = "none";
     mainApp.style.display = "block";
-    
-    greetingText.textContent = `${name}'s Moosik`; 
+    const firstName = name.split(' ')[0];
+    greetingText.textContent = `${firstName}'s Moosik`; 
     
     await fetchCloudFavorites();
     searchDefaultMusic("Malayalam hits");
 }
+
+
 
 async function fetchCloudFavorites() {
     const { data, error } = await supabaseClient
